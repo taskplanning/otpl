@@ -1,2 +1,3 @@
-# otpl
-The Open Task Planning Library
+# Open Task Planning Library
+
+coming soon...
