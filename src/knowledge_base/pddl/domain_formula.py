@@ -1,4 +1,5 @@
 from typing import List
+from object import Object
 
 class DomainFormula:
     """
@@ -6,7 +7,7 @@ class DomainFormula:
     """
     
     class TypedParameter:
-        def __init__(self, type : str, name : str, value : str = None) -> None:
+        def __init__(self, type : str, name : str, value : Object = None) -> None:
             self.type = type
             self.name = name
             self.value = value

@@ -41,7 +41,7 @@ class ExprBase:
         if self.expr_type == ExprBase.EXPR_TYPE.CONSTANT:
             return str(self.value)
         if self.expr_type == ExprBase.EXPR_TYPE.FUNCTION:
-            return str(function)
+            return str(self.function)
         if self.expr_type == ExprBase.EXPR_TYPE.OPERATOR:
             return self.op.value
         if self.expr_type == ExprBase.EXPR_TYPE.SPECIAL:

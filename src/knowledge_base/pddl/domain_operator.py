@@ -10,6 +10,12 @@ class DomainOperator:
     A class used to represent an operator in the domain.
     """
 
+    # TODO class SimpleTimedEffect:
+        
+    #     self.time = ... start end ...
+    #     self.effect : DomainFormula = None
+    #     self.operator = ... add/del
+
     def __init__(self,
             # header
             formula  : DomainFormula,
