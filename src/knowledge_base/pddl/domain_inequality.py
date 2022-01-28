@@ -1,5 +1,5 @@
 from enum import Enum
-from domain_expression import ExprComposite
+from pddl.domain_expression import ExprComposite
 
 
 class DomainInequality:

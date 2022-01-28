@@ -1,17 +1,17 @@
 from typing import List
-from object import Object
+from pddl.object import Object
+
+class TypedParameter:
+    def __init__(self, type : str, name : str, value : Object = None) -> None:
+        self.type = type
+        self.name = name
+        self.value = value
 
 class DomainFormula:
     """
     A class used to represent an atomic formula from the domain.
     """
     
-    class TypedParameter:
-        def __init__(self, type : str, name : str, value : Object = None) -> None:
-            self.type = type
-            self.name = name
-            self.value = value
-
     def __init__(self, name : str, typed_parameters : List[TypedParameter] = [], grounded : bool = False) -> None:
         self.name = name
         self.typed_parameters = typed_parameters

@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import List
-from domain_formula import DomainFormula
+from pddl.domain_formula import DomainFormula
 
 class ExprBase:
     """

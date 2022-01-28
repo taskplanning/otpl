@@ -1,6 +1,6 @@
 from enum import Enum
-from domain_formula import DomainFormula
-from domain_expression import ExprComposite
+from pddl.domain_formula import DomainFormula
+from pddl.domain_expression import ExprComposite
 
 class DomainAssignment:
     """
