@@ -1,8 +1,5 @@
-from typing import List
-
-from defer import return_value
+from typing import Dict, List
 from pddl.domain_type import DomainType
-from pddl.object import Object
 from pddl.domain_operator import DomainOperator
 from pddl.domain_formula import DomainFormula
 
@@ -20,7 +17,8 @@ class Domain:
         self.domain_name = domain_name    
         self.requirements : List[str] = []
         self.types : List[DomainType] = []
-        self.constants : List[Object] = []
+        self.constants_type_map : Dict[str,str] = {}
+        self.type_constants_map : Dict[str,List[str]] = {}
         self.predicates : List[DomainFormula] = []
         self.functions : List[DomainFormula] = []
         self.operators : List[DomainOperator] = []
@@ -40,24 +38,24 @@ class Domain:
             return_string += ")\n"
 
         # constants
-        if self.constants:
+        if self.constants_type_map:
             return_string += "(:constants\n"
-            for constant in self.constants:
-                return_string += "  " + constant.name + " - " + constant.type + "\n"
+            for constant, type in self.constants_type_map.items():
+                return_string += "  " + constant + " - " + type + "\n"
             return_string += ")\n"
 
         # predicates
         if self.predicates:
             return_string += "(:predicates\n"
             for pred in self.predicates:
-                return_string += "  " + str(pred) + "\n"
+                return_string += "  " + pred.print_pddl(include_types=True) + "\n"
             return_string += ")\n"
 
         # functions
         if self.functions:
             return_string += "(:functions\n"
             for func in self.functions:
-                return_string += "  " + str(func) + "\n"
+                return_string += "  " + func.print_pddl(include_types=True) + "\n"
             return_string += ")\n"
 
         # operators

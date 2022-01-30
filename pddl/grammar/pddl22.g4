@@ -52,19 +52,20 @@ require_key
 /*-------*/
 
 types_def
-  : '(:types' typed_list* untyped_list* ')'
+  : '(:types' typed_type_list* untyped_type_list? ')'
   ;
 
-untyped_list
+untyped_type_list
   :  name+
   ;
 
-typed_list
+typed_type_list
   : name+ '-' pddl_type
   ;
 
 pddl_type
-  : (name | '(either' name+ ')')
+  : name
+  | '(either' name+ ')'
   ;
 
 /*-----------*/
@@ -72,7 +73,15 @@ pddl_type
 /*-----------*/
 
 constants_def
-  : '(:constants' typed_list* untyped_list* ')'
+  : '(:constants' typed_name_list* untyped_name_list? ')'
+  ;
+
+untyped_name_list
+  :  name+
+  ;
+
+typed_name_list
+  : name+ '-' pddl_type
   ;
 
 /*------------*/
@@ -84,11 +93,11 @@ predicates_def
   ;
 
 atomic_formula_skeleton
-  : '(' name typed_var_list* untyped_var_list* ')'
+  : '(' name typed_var_list* untyped_var_list? ')'
   ;
 
 untyped_var_list
-  :  variable+
+  : variable+
   ;
 
 typed_var_list
@@ -109,7 +118,7 @@ functions_def
 
 action_def
   : '(:action' name
-  ':parameters (' untyped_var_list* untyped_var_list ')' 
+  ':parameters (' typed_var_list* untyped_var_list? ')' 
   (':precondition' goal_descriptor)?
   (':effect' effect)?
   ')'
@@ -120,24 +129,28 @@ action_def
 /*-------*/
 
 goal_descriptor
-  : '()'
-  | atomic_formula
-  | '(and' atomic_formula* ')'
-  | '(or' atomic_formula* ')'
-  | '(not' goal_descriptor ')'
-  | '(imply' goal_descriptor goal_descriptor ')'
-  | '(exists' '(' typed_var_list ')' goal_descriptor ')'
-  | '(forall' '(' typed_var_list ')' goal_descriptor ')'
-  | function_comparison
+  : '()' #goal_descriptor_empty
+  | atomic_formula #goal_descriptor_simple
+  | '(and' goal_descriptor* ')' #goal_descriptor_conjunction
+  | '(or' goal_descriptor* ')' #goal_descriptor_disjunction
+  | '(not' goal_descriptor ')' #goal_descriptor_negative
+  | '(imply' goal_descriptor goal_descriptor ')' #goal_descriptor_implication
+  | '(exists' '(' typed_var_list* untyped_var_list? ')' goal_descriptor ')' #goal_descriptor_existential
+  | '(forall' '(' typed_var_list* untyped_var_list? ')' goal_descriptor ')' #goal_descriptor_universal
+  | function_comparison #goal_descriptor_comparison
   ;
 
 atomic_formula
-  : '(' name term* ')'
+  : '(' name term_list ')'
+  ;
+
+term_list
+  : term*
   ;
 
 term
-  : variable
-  | name
+  : variable #term_var
+  | name #term_name
   ;
 
 function_comparison
@@ -152,10 +165,10 @@ binary_comparison
   ;
 
 expression
-  : NUMBER
-  | '(' binary_operator expression expression ')'
-  | '(' '-' expression ')'
-  | atomic_formula
+  : number #expression_number
+  | '(' binary_operator expression expression ')' #expression_binary_op
+  | '(' '-' expression ')' #expression_uminus
+  | atomic_formula #expression_function
   ;
 
 binary_operator
@@ -170,25 +183,26 @@ binary_operator
 /*---------*/
 
 effect
-  : '()'
-  | '(and' c_effect* ')'
+  : '()' #effect_empty
+  | '(and' c_effect* ')' #effect_conjunction
+  | c_effect #effect_c_effect
   ;
 
 c_effect
-  : '(forall' '(' typed_var_list ')' effect ')'
-  | '(when' goal_descriptor conditional_effect ')'
-  | p_effect
+  : '(forall' '(' typed_var_list* untyped_var_list? ')' effect ')' #c_effect_forall
+  | '(when' goal_descriptor conditional_effect ')' #c_effect_conditional
+  | p_effect #c_effect_primitive
   ;
 
 conditional_effect
-  : '(and' p_effect* ')'
-  | p_effect
+  : '(and' p_effect* ')' #conditional_effect_conjunction
+  | p_effect #conditional_effect_primitive
   ;
 
 p_effect
-  : '(' assign_operator atomic_formula expression ')'
-  | '(not' atomic_formula ')'
-  | atomic_formula
+  : '(' assign_operator atomic_formula expression ')' #p_effect_assign
+  | '(not' atomic_formula ')' #p_effect_negative
+  | atomic_formula #p_effect_simple
   ;
 
 assign_operator
@@ -205,22 +219,22 @@ assign_operator
 
 durative_action_def
   : '(:durative-action' name
-  ':parameters (' typed_var_list* untyped_var_list* ')' 
+  ':parameters (' typed_var_list* untyped_var_list? ')' 
   ':duration' duration_constraint
-  ':condition' durative_action_goal_descriptor
-  ':effect' durative_action_effect
+  (':condition' durative_action_goal_descriptor)?
+  (':effect' durative_action_effect)?
   ')'
   ;
 
 duration_constraint
-  : '()'
-  | '(and' simple_duration_constraint ')'
-  | simple_duration_constraint
+  : '()' #duration_constraint_empty
+  | '(and' simple_duration_constraint* ')' #duration_constraint_conjunction
+  | simple_duration_constraint #duration_constraint_simple
   ;
 
 simple_duration_constraint
-  : '(' duration_op '?duration' expression ')'
-  | '(at' time_specifier simple_duration_constraint ')'
+  : '(' duration_op '?duration' expression ')' #simple_duration_constraint_simple
+  | '(at' time_specifier simple_duration_constraint ')' #simple_duration_constraint_timed
   ;
 
 duration_op
@@ -230,9 +244,9 @@ duration_op
   ;
 
 durative_action_goal_descriptor
-  : '()'
-  | '(and' timed_goal_descriptor+ ')'
-  | timed_goal_descriptor ')'
+  : '()' #durative_action_goal_descriptor_empty
+  | '(and' timed_goal_descriptor+ ')' #durative_action_goal_descriptor_conjunction
+  | timed_goal_descriptor #durative_action_goal_descriptor_timed
   ;
 
 timed_goal_descriptor
@@ -251,18 +265,17 @@ time_specifier
   ;
 
 durative_action_effect
-  : '()'
-  | '(and' durative_action_effect* ')'
-  | timed_effect
-  | '(forall' '(' typed_var_list ')' durative_action_effect ')'
-  | '(when' durative_action_goal_descriptor timed_effect ')'
-  | '(' assign_operator atomic_formula expression_durative ')'
+  : '()' #durative_action_effect_empty
+  | '(and' durative_action_effect* ')' #durative_action_effect_conjunction
+  | timed_effect #durative_action_effect_timed
+  | '(forall' '(' typed_var_list* untyped_var_list? ')' durative_action_effect ')' #durative_action_effect_forall
+  | '(when' durative_action_goal_descriptor timed_effect ')' #durative_action_effect_conditional
   ;
 
 timed_effect
-  : '(at' time_specifier c_effect ')'
-  | '(at' time_specifier function_assign_durative ')'
-  | '(' assign_op_t atomic_formula expression_t ')'
+  : '(at' time_specifier c_effect ')' #timed_effect_timed
+  | '(at' time_specifier function_assign_durative ')' #timed_effect_assign
+  | '(' assign_op_t atomic_formula expression_t ')' #timed_effect_continuous
   ;
 
 function_assign_durative
@@ -270,10 +283,10 @@ function_assign_durative
   ;
 
 expression_durative
-  : '(' binary_operator expression_durative expression_durative ')'
-  | '(-' expression_durative ')'
-  | '?duration'
-  | expression
+  : '(' binary_operator expression_durative expression_durative ')' #expression_durative_operator
+  | '(-' expression_durative ')' #expression_durative_uminus
+  | '?duration' #expression_durative_duration
+  | expression #expression_durative_expression
   ;
 
 assign_op_t
@@ -282,8 +295,8 @@ assign_op_t
   ;
 
 expression_t
-  : '(*' expression '#t)'
-  | '(*' '#t' expression ')'
+  : '(' '*' expression '#t)'
+  | '(' '*' '#t' expression ')'
   | '#t'
   ;
 
@@ -311,7 +324,7 @@ problem
   ;
 
 object_declaration
-  : '(:objects' typed_list* untyped_list* ')'
+  : '(:objects' typed_name_list* untyped_name_list? ')'
   ;
 
 init
@@ -320,8 +333,8 @@ init
 
 init_element
   : atomic_formula
-  | '(=' atomic_formula ')'
-  | '(at' NUMBER atomic_formula ')'
+  | '(' '=' atomic_formula ')'
+  | '(at' number atomic_formula ')'
   ;
 
 goal
@@ -338,7 +351,7 @@ optimization
   ;
 
 ground_function_expression
-  : NUMBER
+  : number
   | '(' binary_operator ground_function_expression ground_function_expression ')'
   | '(' '-' ground_function_expression ')'
   | '(' name name* ')'
@@ -355,6 +368,10 @@ variable
 
 name
   : NAME
+  ;
+
+number
+  : NUMBER
   ;
 
 VARIABLE
@@ -376,5 +393,5 @@ COMMENT
   ;
 
 WS
-  : [ \t\r\n]+ -> channel(HIDDEN)
+  : [ \t\r\n]+ -> skip
   ;
