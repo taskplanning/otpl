@@ -3,6 +3,7 @@ import sys
 from typing import Type
 from antlr4 import CommonTokenStream, FileStream
 from pddl import domain_condition
+from pddl.derived_predicate import DerivedPredicate
 from pddl.domain_assignment import AssignmentType, DomainAssignment
 from pddl.domain_effect import Effect, EffectConditional, EffectConjunction, EffectForall, EffectNegative, EffectSimple, TimedEffect
 from pddl.domain_expression import ExprBase, ExprComposite
@@ -425,6 +426,15 @@ class Parser(pddl22Visitor):
             effect=effect)
         self.domain.operators.append(self.operator)
 
+    #====================#
+    # derived predicates #
+    #====================#
+
+    def visitDerived_predicate_def(self, ctx: pddl22Parser.Derived_predicate_defContext):
+        self.domain.derived_predicates.append(DerivedPredicate(
+            condition=self.visit(ctx.goal_descriptor()),
+            predicate=self.visit(ctx.atomic_formula_skeleton())))
+
     #================#
     # parsing domain #
     #================#
@@ -559,4 +569,5 @@ if __name__ == "__main__":
     # visitor
     visitor = Parser()
     visitor.visit(tree)
+    print(visitor.domain)
     print(visitor.problem)

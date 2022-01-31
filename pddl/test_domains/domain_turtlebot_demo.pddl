@@ -35,6 +35,8 @@
 		)
 )
 
+(:derived (visited ?wp) (exists (?r - robot) (at_robot ?r ?wp)))
+
 (:action complicated_action
 	:parameters (?v - robot ?w - waypoint ?ugo)
 	:precondition (and

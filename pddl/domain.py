@@ -22,6 +22,7 @@ class Domain:
         self.predicates : List[DomainFormula] = []
         self.functions : List[DomainFormula] = []
         self.operators : List[DomainOperator] = []
+        self.derived_predicates : List[DerivedPredicate] = []
 
     def __str__(self) -> str:
 
@@ -57,6 +58,10 @@ class Domain:
             for func in self.functions:
                 return_string += "  " + func.print_pddl(include_types=True) + "\n"
             return_string += ")\n"
+
+        # derived predicates
+        for der in self.derived_predicates:
+            return_string += str(der) + "\n"
 
         # operators
         for op in self.operators:
