@@ -5,13 +5,6 @@ from pddl.goal_descriptor_inequality import Inequality
 from pddl.time_spec import TimeSpec
 
 
-class DurationType(Enum):
-    EMPTY       = "unconstrained"
-    CONJUNCTION = "conjunction"
-    INEQUALITY  = "inequality"
-    TIMED       = "timed"
-
-
 class Duration:
     """
     A class used to represent a domain duration.
@@ -21,6 +14,12 @@ class Duration:
     - inequality (> ?duration expression)
     - timed inequality (at end (> ?duration expression))
     """
+
+    class DurationType(Enum):
+        EMPTY       = "unconstrained"
+        CONJUNCTION = "conjunction"
+        INEQUALITY  = "inequality"
+        TIMED       = "timed"
 
     def __init__(self, duration_type : DurationType = DurationType.EMPTY) -> None:
         self.duration_type = duration_type
