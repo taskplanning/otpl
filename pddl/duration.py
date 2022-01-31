@@ -1,10 +1,11 @@
 from enum import Enum
 from typing import List, Union
-from pddl.domain_formula import DomainFormula
-from pddl.domain_inequality import DomainInequality
-from pddl.domain_time_spec import TIME_SPEC
+from pddl.atomic_formula import AtomicFormula
+from pddl.goal_descriptor_inequality import Inequality
+from pddl.time_spec import TimeSpec
 
-class DomainDuration:
+
+class Duration:
     """
     A class used to represent a domain duration.
     Sub-types represent one of the following types:
@@ -27,20 +28,20 @@ class DomainDuration:
         return "()"
 
 
-class DomainDurationInequality(DomainDuration):
+class DurationInequality(Duration):
 
-    def __init__(self, inequality : DomainInequality) -> None:
-        super().__init__(DomainDuration.DurationType.INEQUALITY)
+    def __init__(self, inequality : Inequality) -> None:
+        super().__init__(Duration.DurationType.INEQUALITY)
         self.ineq = inequality
 
     def __repr__(self) -> str:
         return repr(self.ineq)
 
 
-class DomainDurationTimed(DomainDuration):
+class DurationTimed(Duration):
 
-    def __init__(self, time_spec : TIME_SPEC, inequality : DomainInequality) -> None:
-        super().__init__(DomainDuration.DurationType.TIMED)
+    def __init__(self, time_spec : TimeSpec, inequality : Inequality) -> None:
+        super().__init__(Duration.DurationType.TIMED)
         self.time_spec = time_spec
         self.ineq = inequality
 
@@ -48,10 +49,10 @@ class DomainDurationTimed(DomainDuration):
         return '(' + self.time_spec + ' ' + repr(self.ineq) + ')'
 
 
-class DomainDurationConjunction(DomainDuration):
+class DurationConjunction(Duration):
 
-    def __init__(self, constraints : List[Union[DomainDurationInequality,DomainDurationTimed]] = []) -> None:
-        super().__init__(DomainDuration.DurationType.CONJUNCTION)
+    def __init__(self, constraints : List[Union[DurationInequality,DurationTimed]] = []) -> None:
+        super().__init__(Duration.DurationType.CONJUNCTION)
         self.constraints = constraints
 
     def __repr__(self) -> str:

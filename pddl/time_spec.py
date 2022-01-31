@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class TIME_SPEC(Enum):
+class TimeSpec(Enum):
     """
     An enumeration for durations, conditions, and effects of durative actions.
     """

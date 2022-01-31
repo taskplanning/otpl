@@ -414,8 +414,18 @@ class pddl22Visitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by pddl22Parser#init_element.
-    def visitInit_element(self, ctx:pddl22Parser.Init_elementContext):
+    # Visit a parse tree produced by pddl22Parser#init_element_simple.
+    def visitInit_element_simple(self, ctx:pddl22Parser.Init_element_simpleContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by pddl22Parser#init_element_assign.
+    def visitInit_element_assign(self, ctx:pddl22Parser.Init_element_assignContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by pddl22Parser#init_element_til.
+    def visitInit_element_til(self, ctx:pddl22Parser.Init_element_tilContext):
         return self.visitChildren(ctx)
 
 
@@ -434,8 +444,28 @@ class pddl22Visitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by pddl22Parser#ground_function_expression.
-    def visitGround_function_expression(self, ctx:pddl22Parser.Ground_function_expressionContext):
+    # Visit a parse tree produced by pddl22Parser#ground_function_expression_number.
+    def visitGround_function_expression_number(self, ctx:pddl22Parser.Ground_function_expression_numberContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by pddl22Parser#ground_function_expression_binary.
+    def visitGround_function_expression_binary(self, ctx:pddl22Parser.Ground_function_expression_binaryContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by pddl22Parser#ground_function_expression_uminus.
+    def visitGround_function_expression_uminus(self, ctx:pddl22Parser.Ground_function_expression_uminusContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by pddl22Parser#ground_function_expression_function.
+    def visitGround_function_expression_function(self, ctx:pddl22Parser.Ground_function_expression_functionContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by pddl22Parser#ground_function_expression_total_time.
+    def visitGround_function_expression_total_time(self, ctx:pddl22Parser.Ground_function_expression_total_timeContext):
         return self.visitChildren(ctx)
 
 

@@ -4,8 +4,8 @@ The implementation of comparison goals is implemented in DomainInequality.
 """
 from typing import Union, List
 from enum import Enum
-from pddl.domain_formula import DomainFormula, TypedParameter
-from pddl.domain_time_spec import TIME_SPEC 
+from pddl.atomic_formula import AtomicFormula, TypedParameter
+from pddl.time_spec import TimeSpec 
 
 
 class GoalType(Enum):
@@ -35,7 +35,7 @@ class GoalDescriptor:
 
 class GoalSimple(GoalDescriptor):
 
-    def __init__(self, atomic_formula : DomainFormula) -> None:
+    def __init__(self, atomic_formula : AtomicFormula) -> None:
         super().__init__(goal_type=GoalType.SIMPLE)
         self.atomic_formula = atomic_formula
 
@@ -107,7 +107,7 @@ class TimedGoal(GoalDescriptor):
     This class describes a simple add or delete effect with time specifier for durative action.
     """
 
-    def __init__(self, time_spec : TIME_SPEC, goal : GoalDescriptor) -> None:
+    def __init__(self, time_spec : TimeSpec, goal : GoalDescriptor) -> None:
         super().__init__(goal_type=GoalType.TIMED)
         self.time_spec = time_spec
         self.goal = goal

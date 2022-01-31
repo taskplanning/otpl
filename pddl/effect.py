@@ -4,10 +4,10 @@ The implementation of assignment goals is implemented in DomainAssignment.
 """
 from typing import List, Union
 from enum import Enum
-from pddl.domain_condition import GoalDescriptor
-from pddl.domain_expression import ExprComposite
-from pddl.domain_formula import DomainFormula, TypedParameter
-from pddl.domain_time_spec import TIME_SPEC
+from pddl.goal_descriptor import GoalDescriptor
+from pddl.expression import ExprComposite
+from pddl.atomic_formula import AtomicFormula, TypedParameter
+from pddl.time_spec import TimeSpec
         
 
 class EffectType(Enum):
@@ -69,7 +69,7 @@ class EffectConditional(Effect):
 
 class EffectSimple(Effect):
 
-    def __init__(self, formula : DomainFormula) -> None:
+    def __init__(self, formula : AtomicFormula) -> None:
         super().__init__(effect_type=EffectType.SIMPLE)
         self.formula = formula
 
@@ -78,7 +78,7 @@ class EffectSimple(Effect):
 
 class EffectNegative(EffectSimple):
 
-    def __init__(self, formula : DomainFormula) -> None:
+    def __init__(self, formula : AtomicFormula) -> None:
         super().__init__(formula)
         self.effect_type = EffectType.NEGATIVE
 
@@ -88,7 +88,7 @@ class EffectNegative(EffectSimple):
 
 class TimedEffect(Effect):
 
-    def __init__(self, time_spec : TIME_SPEC, effect : Effect) -> None:
+    def __init__(self, time_spec : TimeSpec, effect : Effect) -> None:
         super().__init__(effect_type=EffectType.TIMED)
         self.time_spec = time_spec
         self.effect = effect

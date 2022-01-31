@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import List
-from pddl.domain_formula import DomainFormula
+from pddl.atomic_formula import AtomicFormula
 
 class ExprBase:
     """
@@ -28,7 +28,7 @@ class ExprBase:
     def __init__(self,
             expr_type : ExprType,
             constant : float = 0.0,
-            function : DomainFormula = None,
+            function : AtomicFormula = None,
             op : BinaryOperator = None,
             special_type : SpecialType = None) -> None:
         self.expr_type = expr_type

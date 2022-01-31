@@ -1,14 +1,14 @@
 from enum import Enum
-from pddl.domain_condition import GoalDescriptor, GoalType
-from pddl.domain_expression import ExprComposite
+from pddl.goal_descriptor import GoalDescriptor, GoalType
+from pddl.expression import ExprComposite
 
 
-class DomainInequality(GoalDescriptor):
+class Inequality(GoalDescriptor):
     """
     A class used to store the numeric effects of an action.
     """
 
-    class COMPARISON_TYPE(Enum):
+    class ComparisonType(Enum):
         GREATER   = ">"
         GREATEREQ = ">="
         LESS      = "<"
@@ -16,7 +16,7 @@ class DomainInequality(GoalDescriptor):
         EQUALS    = "="
 
     def __init__(self,
-            comparison_type : COMPARISON_TYPE,
+            comparison_type : ComparisonType,
             lhs : ExprComposite,
             rhs : ExprComposite,
             ) -> None:
