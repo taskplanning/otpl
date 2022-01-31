@@ -2,22 +2,22 @@ from enum import Enum
 import sys
 from typing import Type
 from antlr4 import CommonTokenStream, FileStream
-from pddl import domain_condition
+from pddl import goal_descriptor
 from pddl.derived_predicate import DerivedPredicate
-from pddl.domain_assignment import AssignmentType, DomainAssignment
-from pddl.domain_effect import Effect, EffectConditional, EffectConjunction, EffectForall, EffectNegative, EffectSimple, TimedEffect
-from pddl.domain_expression import ExprBase, ExprComposite
-from pddl.domain_time_spec import TIME_SPEC
+from pddl.effect_assignment import AssignmentType, Assignment
+from pddl.effect import Effect, EffectConditional, EffectConjunction, EffectForall, EffectNegative, EffectSimple, TimedEffect
+from pddl.expression import ExprBase, ExprComposite
+from pddl.time_spec import TimeSpec
 from pddl.grammar.pddl22Lexer import pddl22Lexer
 from pddl.grammar.pddl22Parser import pddl22Parser
 from pddl.grammar.pddl22Visitor import pddl22Visitor
 from pddl.domain import Domain
 from pddl.domain_type import DomainType
-from pddl.domain_formula import DomainFormula, TypedParameter
-from pddl.domain_inequality import DomainInequality
-from pddl.domain_operator import DomainOperator
-from pddl.domain_duration import DomainDuration, DomainDurationConjunction, DomainDurationInequality, DomainDurationTimed
-from pddl.domain_condition import GoalConjunction, GoalDescriptor, GoalDisjunction, GoalImplication, GoalNegative, GoalQuantified, GoalSimple, GoalType, TimedGoal
+from pddl.atomic_formula import AtomicFormula, TypedParameter
+from pddl.goal_descriptor_inequality import Inequality
+from pddl.operator import Operator
+from pddl.duration import Duration, DurationConjunction, DurationInequality, DurationTimed
+from pddl.goal_descriptor import GoalConjunction, GoalDescriptor, GoalDisjunction, GoalImplication, GoalNegative, GoalQuantified, GoalSimple, GoalType, TimedGoal
 from pddl.metric import Metric, MetricSpec
 from pddl.problem import Problem
 from pddl.timed_initial_literal import TimedInitialLiteral
@@ -105,7 +105,7 @@ class Parser(pddl22Visitor):
 
     # parse atomic formula skeleton (ungrounded) into DomainFormula
     def visitAtomic_formula_skeleton(self, ctx:pddl22Parser.Atomic_formula_skeletonContext):
-        formula = DomainFormula(ctx.name().getText(), typed_parameters=[])
+        formula = AtomicFormula(ctx.name().getText(), typed_parameters=[])
         # typed parameters
         for param_list in ctx.typed_var_list(): formula.typed_parameters.extend(self.visit(param_list))
         # primitive parameters
@@ -115,7 +115,7 @@ class Parser(pddl22Visitor):
     # parse atomic formula (of terms) into DomainFormula
     def visitAtomic_formula(self, ctx:pddl22Parser.Atomic_formulaContext):
         # TODO need a name and variable lookup table to get types
-        return DomainFormula(ctx.name().getText(), typed_parameters=self.visit(ctx.term_list()))
+        return AtomicFormula(ctx.name().getText(), typed_parameters=self.visit(ctx.term_list()))
 
     #=============#
     # expressions #
@@ -171,36 +171,36 @@ class Parser(pddl22Visitor):
     #=============#
 
     def visitFunction_comparison(self, ctx:pddl22Parser.Function_comparisonContext):
-        ineq = DomainInequality(
-            DomainInequality.COMPARISON_TYPE(ctx.binary_comparison.getText()),
+        ineq = Inequality(
+            Inequality.ComparisonType(ctx.binary_comparison.getText()),
             self.visit(ctx.expression[0]),
             self.visit(ctx.expression[1])
         )
         return ineq
 
     def visitDuration_constraint_empty(self, ctx: pddl22Parser.Duration_constraint_emptyContext):
-        return DomainDuration()
+        return Duration()
 
     def visitDuration_constraint_conjunction(self, ctx: pddl22Parser.Duration_constraint_conjunctionContext):
         constraints = []
         for c in ctx.simple_duration_constraint():
             constraints.append(self.visit(c))
-        return DomainDurationConjunction(constraints)
+        return DurationConjunction(constraints)
 
     def visitSimple_duration_constraint_simple(self, ctx: pddl22Parser.Simple_duration_constraint_simpleContext):
-        comparison_type=DomainInequality.COMPARISON_TYPE(ctx.duration_op().getText())
+        comparison_type=Inequality.ComparisonType(ctx.duration_op().getText())
         lhs = self.visit(ctx.expression())
         rhs = self.visit(ctx.expression())
-        return DomainDurationInequality(DomainInequality(comparison_type, lhs, rhs))
+        return DurationInequality(Inequality(comparison_type, lhs, rhs))
 
     def visitSimple_duration_constraint_timed(self, ctx: pddl22Parser.Simple_duration_constraint_timedContext):
         if ctx.time_specifier().getText() == "start":
-            time_spec = TIME_SPEC.AT_START
+            time_spec = TimeSpec.AT_START
         elif ctx.time_specifier().getText() == "end":
-            time_spec = TIME_SPEC.AT_END
+            time_spec = TimeSpec.AT_END
         inequality=self.visit(ctx.simple_duration_constraint())
-        assert(inequality.duration_type == DomainDuration.DurationType.INEQUALITY)
-        DomainDurationTimed(time_spec, inequality)
+        assert(inequality.duration_type == Duration.DurationType.INEQUALITY)
+        DurationTimed(time_spec, inequality)
 
     #===============#
     # parsing goals #
@@ -270,13 +270,13 @@ class Parser(pddl22Visitor):
     def visitTimed_goal_descriptor(self, ctx: pddl22Parser.Timed_goal_descriptorContext):
         if ctx.time_specifier().getText() == "start":
             assert(ctx.time_specifier_prefix().getText() == "(at")
-            time_spec = TIME_SPEC.AT_START
+            time_spec = TimeSpec.AT_START
         elif ctx.time_specifier().getText() == "end":
             assert(ctx.time_specifier_prefix().getText() == "(at")
-            time_spec = TIME_SPEC.AT_END
+            time_spec = TimeSpec.AT_END
         elif ctx.time_specifier().getText() == "all":
             assert(ctx.time_specifier_prefix().getText() == "(over")
-            time_spec = TIME_SPEC.OVER_ALL
+            time_spec = TimeSpec.OVER_ALL
         return TimedGoal(time_spec=time_spec, goal=self.visit(ctx.goal_descriptor()))
         
     #=================#
@@ -317,7 +317,7 @@ class Parser(pddl22Visitor):
         assign_op = AssignmentType(ctx.assign_operator().getText())
         formula = self.visit(ctx.atomic_formula())
         expression = self.visit(ctx.expression())
-        return DomainAssignment(assign_op, lhs=formula, rhs=expression)
+        return Assignment(assign_op, lhs=formula, rhs=expression)
 
     def visitP_effect_negative(self, ctx: pddl22Parser.P_effect_negativeContext):
         return EffectNegative(self.visit(ctx.atomic_formula()))
@@ -355,23 +355,23 @@ class Parser(pddl22Visitor):
 
     def visitTimed_effect_timed(self, ctx: pddl22Parser.Timed_effect_timedContext):
         if ctx.time_specifier().getText() == "start":
-            time_spec = TIME_SPEC.AT_START
+            time_spec = TimeSpec.AT_START
         elif ctx.time_specifier().getText() == "end":
-            time_spec = TIME_SPEC.AT_END
+            time_spec = TimeSpec.AT_END
         return TimedEffect(time_spec, self.visit(ctx.c_effect()))
 
     def visitTimed_effect_assign(self, ctx: pddl22Parser.Timed_effect_assignContext):
         if ctx.time_specifier().getText() == "start":
-            time_spec = TIME_SPEC.AT_START
+            time_spec = TimeSpec.AT_START
         elif ctx.time_specifier().getText() == "end":
-            time_spec = TIME_SPEC.AT_END
+            time_spec = TimeSpec.AT_END
         return TimedEffect(time_spec, self.visit(ctx.c_effect()))
 
     def visitFunction_assign_durative(self, ctx: pddl22Parser.Function_assign_durativeContext):
         assign_op = AssignmentType(ctx.assign_operator().getText())        
         formula = self.visit(ctx.atomic_formula())
         expression = self.visit(ctx.expression_durative())
-        return DomainAssignment(assign_op, lhs=formula, rhs=expression)
+        return Assignment(assign_op, lhs=formula, rhs=expression)
 
     def visitTimed_effect_continuous(self, ctx: pddl22Parser.Timed_effect_continuousContext):
         if ctx.assign_op_t().getText() == "increase":
@@ -380,7 +380,7 @@ class Parser(pddl22Visitor):
             assign_op = AssignmentType.DECREASE_CTS
         formula = self.visit(ctx.atomic_formula())
         expression = self.visit(ctx.expression_t())
-        return DomainAssignment(assign_op, lhs=formula, rhs=expression)
+        return Assignment(assign_op, lhs=formula, rhs=expression)
 
     #=================#
     # parsing actions #
@@ -388,7 +388,7 @@ class Parser(pddl22Visitor):
 
     def visitAction_def(self, ctx:pddl22Parser.Action_defContext):
 
-        op_formula = DomainFormula(ctx.name().getText())
+        op_formula = AtomicFormula(ctx.name().getText())
         for param_list in ctx.typed_var_list():
             op_formula.typed_parameters.extend(self.visit(param_list))
 
@@ -398,7 +398,7 @@ class Parser(pddl22Visitor):
         if ctx.effect(): effect = self.visit(ctx.effect())
         else: effect = Effect()
 
-        self.operator = DomainOperator(op_formula,
+        self.operator = Operator(op_formula,
             durative=False,
             condition=condition,
             effect=effect)
@@ -407,7 +407,7 @@ class Parser(pddl22Visitor):
 
     def visitDurative_action_def(self, ctx:pddl22Parser.Durative_action_defContext):
 
-        op_formula = DomainFormula(ctx.name().getText())
+        op_formula = AtomicFormula(ctx.name().getText())
         for param_list in ctx.typed_var_list():
             op_formula.typed_parameters.extend(self.visit(param_list))
 
@@ -419,7 +419,7 @@ class Parser(pddl22Visitor):
             effect = self.visit(ctx.durative_action_effect())
         else: effect = Effect()
 
-        self.operator = DomainOperator(op_formula,
+        self.operator = Operator(op_formula,
             durative=True,
             duration=self.visit(ctx.duration_constraint()),
             condition=condition,
@@ -544,7 +544,7 @@ class Parser(pddl22Visitor):
         params = []
         for param in ctx.name()[1:]:
             params.append(TypedParameter("TODO parse tables", "TODO parse tables", param.getText()))
-        expr.function = DomainFormula(name, params)
+        expr.function = AtomicFormula(name, params)
         return ExprComposite([expr])
 
     def visitGround_function_expression_total_time(self, ctx: pddl22Parser.Ground_function_expression_total_timeContext):
