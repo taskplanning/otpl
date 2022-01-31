@@ -15,6 +15,7 @@ class DomainFormula:
         self.name = name
         self.typed_parameters = typed_parameters
         self.grounded = grounded
+        self.function_value = 0.0
 
     def print_pddl(self, include_types=False):
         """

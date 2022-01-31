@@ -332,9 +332,9 @@ init
   ;
 
 init_element
-  : atomic_formula
-  | '(' '=' atomic_formula ')'
-  | '(at' number atomic_formula ')'
+  : atomic_formula #init_element_simple
+  | '(' '=' atomic_formula number ')' #init_element_assign
+  | '(at' number p_effect ')' #init_element_til
   ;
 
 goal
@@ -351,11 +351,11 @@ optimization
   ;
 
 ground_function_expression
-  : number
-  | '(' binary_operator ground_function_expression ground_function_expression ')'
-  | '(' '-' ground_function_expression ')'
-  | '(' name name* ')'
-  | 'total-time'
+  : number #ground_function_expression_number
+  | '(' binary_operator ground_function_expression ground_function_expression ')' #ground_function_expression_binary
+  | '(' '-' ground_function_expression ')' #ground_function_expression_uminus
+  | '(' name name* ')' #ground_function_expression_function
+  | 'total-time' #ground_function_expression_total_time
   ;
 
 /*-------*/

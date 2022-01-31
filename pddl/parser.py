@@ -17,6 +17,9 @@ from pddl.domain_inequality import DomainInequality
 from pddl.domain_operator import DomainOperator
 from pddl.domain_duration import DomainDuration, DomainDurationConjunction, DomainDurationInequality, DomainDurationTimed
 from pddl.domain_condition import GoalConjunction, GoalDescriptor, GoalDisjunction, GoalImplication, GoalNegative, GoalQuantified, GoalSimple, GoalType, TimedGoal
+from pddl.metric import Metric, MetricSpec
+from pddl.problem import Problem
+from pddl.timed_initial_literal import TimedInitialLiteral
 
 class Parser(pddl22Visitor):
     """
@@ -29,7 +32,7 @@ class Parser(pddl22Visitor):
         self.inequality = None
         self.expression = None
 
-        self.parsing_operator = False
+        self.parsing_state = "none"
 
     #==================#
     # typed parameters #
@@ -427,11 +430,16 @@ class Parser(pddl22Visitor):
     #================#
 
     def visitDomain(self, ctx:pddl22Parser.DomainContext):
+        self.parsing_state = "domain"
         self.domain = Domain(ctx.name().getText())
         self.visitChildren(ctx)
+        self.parsing_state = "none"
 
     def visitRequire_key(self, ctx:pddl22Parser.Require_keyContext):
-        self.domain.requirements.append(ctx.getText())
+        if self.parsing_state=="domain":
+            self.domain.requirements.append(ctx.getText())
+        elif self.parsing_state=="problem":
+            self.problem.requirements.append(ctx.getText())
 
     def visitConstants_def(self, ctx:pddl22Parser.Constants_defContext):
         objects = []
@@ -460,6 +468,80 @@ class Parser(pddl22Visitor):
     # parsing problem #
     #=================#
 
+    def visitProblem(self, ctx:pddl22Parser.DomainContext):
+        self.parsing_state = "problem"
+        self.problem = Problem(
+            problem_name=ctx.name()[0].getText(),
+            domain_name=ctx.name()[1].getText())
+        self.visitChildren(ctx)
+        self.parsing_state = "none"
+
+    def visitObject_declaration(self, ctx: pddl22Parser.Object_declarationContext):
+        objects = []
+        # typed objects
+        for name in ctx.typed_name_list():
+            for obj in self.visit(name):
+                self.problem.objects_type_map[obj[0]] = obj[1]
+                self.problem.type_objects_map[obj[1]] = obj[0]
+        # primitive objects
+        if ctx.untyped_name_list():
+            for obj in self.visit(ctx.untyped_name_list()):
+                self.problem.objects_type_map[obj[0]] = obj[1]
+                self.problem.type_objects_map[obj[1]] = obj[0]        
+
+    def visitInit_element_simple(self, ctx: pddl22Parser.Init_element_simpleContext):
+        self.problem.propositions.append(self.visit(ctx.atomic_formula()))
+
+    def visitInit_element_assign(self, ctx: pddl22Parser.Init_element_assignContext):
+        function = self.visit(ctx.atomic_formula())
+        function.value = float(ctx.number().getText())
+        self.problem.functions.append(function)
+
+    def visitInit_element_til(self, ctx: pddl22Parser.Init_element_tilContext):
+        til = TimedInitialLiteral(float(ctx.number().getText()),self.visit(ctx.p_effect()))
+        self.problem.timed_initial_literals.append(til)
+
+    def visitGoal(self, ctx: pddl22Parser.GoalContext):
+        self.problem.goal = self.visit(ctx.goal_descriptor())
+
+    def visitMetric_spec(self, ctx: pddl22Parser.Metric_specContext):
+        metric_spec = MetricSpec(ctx.optimization().getText())
+        metric = Metric(metric_spec, self.visit(ctx.ground_function_expression()))
+        self.problem.metric = metric
+
+    #==================#
+    # ground functions #
+    #==================#
+
+    def visitGround_function_expression_number(self, ctx: pddl22Parser.Ground_function_expression_numberContext):
+        number = ExprBase(expr_type=ExprBase.ExprType.CONSTANT, constant=float(ctx.number().getText()))
+        return ExprComposite([number])
+
+    def visitGround_function_expression_binary(self, ctx: pddl22Parser.Ground_function_expression_binaryContext):
+        binary_op = ExprBase(expr_type=ExprBase.ExprType.BINARY_OPERATOR)
+        binary_op.op = ExprBase.BinaryOperator(ctx.binary_operator().getText())
+        lhs = self.visit(ctx.ground_function_expression()[0])
+        rhs = self.visit(ctx.ground_function_expression()[1])
+        return ExprComposite([binary_op] + lhs.tokens + rhs.tokens)
+
+    def visitGround_function_expression_uminus(self, ctx: pddl22Parser.Ground_function_expression_uminusContext):
+        uminus = ExprBase(expr_type=ExprBase.ExprType.UMINUS)
+        return ExprComposite([uminus] + self.visit(ctx.ground_function_expression()))
+
+    def visitGround_function_expression_function(self, ctx: pddl22Parser.Ground_function_expression_functionContext):
+        expr = ExprBase(expr_type=ExprBase.ExprType.FUNCTION)
+        name = ctx.name()[0].getText()
+        params = []
+        for param in ctx.name()[1:]:
+            params.append(TypedParameter("TODO parse tables", "TODO parse tables", param.getText()))
+        expr.function = DomainFormula(name, params)
+        return ExprComposite([expr])
+
+    def visitGround_function_expression_total_time(self, ctx: pddl22Parser.Ground_function_expression_total_timeContext):
+        token = ExprBase(expr_type=ExprBase.ExprType.SPECIAL, special_type=ExprBase.SpecialType.TOTAL_TIME)
+        return ExprComposite([token])
+
+
 if __name__ == "__main__":  
     
     # lexer
@@ -477,4 +559,4 @@ if __name__ == "__main__":
     # visitor
     visitor = Parser()
     visitor.visit(tree)
-    print(visitor.domain)
+    print(visitor.problem)

@@ -737,12 +737,30 @@ class pddl22Listener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by pddl22Parser#init_element.
-    def enterInit_element(self, ctx:pddl22Parser.Init_elementContext):
+    # Enter a parse tree produced by pddl22Parser#init_element_simple.
+    def enterInit_element_simple(self, ctx:pddl22Parser.Init_element_simpleContext):
         pass
 
-    # Exit a parse tree produced by pddl22Parser#init_element.
-    def exitInit_element(self, ctx:pddl22Parser.Init_elementContext):
+    # Exit a parse tree produced by pddl22Parser#init_element_simple.
+    def exitInit_element_simple(self, ctx:pddl22Parser.Init_element_simpleContext):
+        pass
+
+
+    # Enter a parse tree produced by pddl22Parser#init_element_assign.
+    def enterInit_element_assign(self, ctx:pddl22Parser.Init_element_assignContext):
+        pass
+
+    # Exit a parse tree produced by pddl22Parser#init_element_assign.
+    def exitInit_element_assign(self, ctx:pddl22Parser.Init_element_assignContext):
+        pass
+
+
+    # Enter a parse tree produced by pddl22Parser#init_element_til.
+    def enterInit_element_til(self, ctx:pddl22Parser.Init_element_tilContext):
+        pass
+
+    # Exit a parse tree produced by pddl22Parser#init_element_til.
+    def exitInit_element_til(self, ctx:pddl22Parser.Init_element_tilContext):
         pass
 
 
@@ -773,12 +791,48 @@ class pddl22Listener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by pddl22Parser#ground_function_expression.
-    def enterGround_function_expression(self, ctx:pddl22Parser.Ground_function_expressionContext):
+    # Enter a parse tree produced by pddl22Parser#ground_function_expression_number.
+    def enterGround_function_expression_number(self, ctx:pddl22Parser.Ground_function_expression_numberContext):
         pass
 
-    # Exit a parse tree produced by pddl22Parser#ground_function_expression.
-    def exitGround_function_expression(self, ctx:pddl22Parser.Ground_function_expressionContext):
+    # Exit a parse tree produced by pddl22Parser#ground_function_expression_number.
+    def exitGround_function_expression_number(self, ctx:pddl22Parser.Ground_function_expression_numberContext):
+        pass
+
+
+    # Enter a parse tree produced by pddl22Parser#ground_function_expression_binary.
+    def enterGround_function_expression_binary(self, ctx:pddl22Parser.Ground_function_expression_binaryContext):
+        pass
+
+    # Exit a parse tree produced by pddl22Parser#ground_function_expression_binary.
+    def exitGround_function_expression_binary(self, ctx:pddl22Parser.Ground_function_expression_binaryContext):
+        pass
+
+
+    # Enter a parse tree produced by pddl22Parser#ground_function_expression_uminus.
+    def enterGround_function_expression_uminus(self, ctx:pddl22Parser.Ground_function_expression_uminusContext):
+        pass
+
+    # Exit a parse tree produced by pddl22Parser#ground_function_expression_uminus.
+    def exitGround_function_expression_uminus(self, ctx:pddl22Parser.Ground_function_expression_uminusContext):
+        pass
+
+
+    # Enter a parse tree produced by pddl22Parser#ground_function_expression_function.
+    def enterGround_function_expression_function(self, ctx:pddl22Parser.Ground_function_expression_functionContext):
+        pass
+
+    # Exit a parse tree produced by pddl22Parser#ground_function_expression_function.
+    def exitGround_function_expression_function(self, ctx:pddl22Parser.Ground_function_expression_functionContext):
+        pass
+
+
+    # Enter a parse tree produced by pddl22Parser#ground_function_expression_total_time.
+    def enterGround_function_expression_total_time(self, ctx:pddl22Parser.Ground_function_expression_total_timeContext):
+        pass
+
+    # Exit a parse tree produced by pddl22Parser#ground_function_expression_total_time.
+    def exitGround_function_expression_total_time(self, ctx:pddl22Parser.Ground_function_expression_total_timeContext):
         pass
 
 

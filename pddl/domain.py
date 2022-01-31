@@ -6,11 +6,11 @@ from pddl.domain_formula import DomainFormula
 class Domain:
     """
     A class that describes a PDDL domain model, including:
-    - requirements
-    - type heirarchy
-    - constants
-    - predicates & functions
-    - operators
+    - *requirements* as a list of strings.
+    - *type heirarchy* as a list of pddl.domain_type.DomainType.
+    - *constants* as two dicts mapping: (a) object name to type (str->str) (b) type to object names (str->List[str]).
+    - *predicates* & *functions* both as a list of pddl.domain_formula.DomainFormula.
+    - *operators* as a list of pddl.domain_operator.DomainOperator.
     """
 
     def __init__(self, domain_name : str) -> None:
@@ -26,7 +26,7 @@ class Domain:
     def __str__(self) -> str:
 
         # header
-        return_string = "(define (" + self.domain_name + ")\n" \
+        return_string = "(define (domain " + self.domain_name + ")\n" \
             + "(:requirements " + " ".join(self.requirements) + ")\n"
 
         # types
