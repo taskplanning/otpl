@@ -34,18 +34,52 @@ class Parser(pddl22Visitor):
         # set to "none", "domain", or "problem"
         self.parsing_state = "none"
 
+    #==========================#
+    # parsing access functions #
+    #==========================#
+
     def parse_files(self, domain : str, problem : str) -> Tuple[Domain, Problem]:
+        """Parse and return a PDDL domain and problem from file.
+
+        Args:
+            domain (str):   Path to domain file.
+            problem (str):  Path to problem file.
+
+        Returns:
+            Tuple[Domain, Problem]: Parsed result as python objects.
+        """
         return self.parse_domain(domain), self.parse_problem(problem)
 
     def parse_domain_file(self, domain : str) -> Domain:
+        """Parse a PDDL domain file.
+
+        Args:
+            domain (str): Path to domain file.
+
+        Returns:
+            Domain: Parsed result as instance of pddl.domain.Domain.
+        """
         self.parse_file(domain)
         return self.domain
 
     def parse_problem_file(self, problem : str) -> Problem:
+        """Parse a PDDL problem file.
+
+        Args:
+            domain (str): Path to problem file.
+
+        Returns:
+            Problem: Parsed result as instance of pddl.problem.Problem.
+        """
         self.parse_file(problem)
         return self.problem
 
     def parse_file(self, file : str) -> None:
+        """Parse single PDDL file. After parsing the result will be stored in domain or problem field.
+
+        Args:
+            file (str): Path to PDDL file.
+        """
         
         # lexer
         data = FileStream(file)
@@ -59,12 +93,10 @@ class Parser(pddl22Visitor):
         # check for syntax errors in the PDDL
         if parser.getNumberOfSyntaxErrors() > 0:
             print("PDDL Parser encountered syntax errors.")
-            return None
+            return 
 
         # visit tree to build python objects
         self.visit(tree)
-
-
 
     #==================#
     # typed parameters #
