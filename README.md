@@ -1,4 +1,4 @@
-# Open Task Planning Library
+# Open Task Planning Library (OTPL)
 
 OTPL has the following optional dependencies:
 - [https://www.antlr.org/](ANTLR) (needed to regenerate the PDDL parser after changes to the grammar file.)
