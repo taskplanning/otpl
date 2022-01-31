@@ -1,7 +1,7 @@
 from enum import Enum
-from pddl.domain_effect import Effect, EffectType
-from pddl.domain_formula import DomainFormula
-from pddl.domain_expression import ExprComposite
+from pddl.effect import Effect, EffectType
+from pddl.atomic_formula import AtomicFormula
+from pddl.expression import ExprComposite
 
 
 class AssignmentType(Enum):
@@ -14,12 +14,12 @@ class AssignmentType(Enum):
     DECREASE_CTS = "decrease continuous"
 
 
-class DomainAssignment(Effect):
+class Assignment(Effect):
     """
     A class used to store the numeric effects of an action.
     """
 
-    def __init__(self, assign_type : AssignmentType, lhs : DomainFormula, rhs : ExprComposite) -> None:
+    def __init__(self, assign_type : AssignmentType, lhs : AtomicFormula, rhs : ExprComposite) -> None:
         super().__init__(effect_type=EffectType.ASSIGN)
         self.assign_type = assign_type
         self.lhs = lhs

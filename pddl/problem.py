@@ -1,6 +1,6 @@
 from typing import Dict, List
-from pddl.domain_condition import GoalDescriptor
-from pddl.domain_formula import DomainFormula
+from pddl.goal_descriptor import GoalDescriptor
+from pddl.atomic_formula import AtomicFormula
 from pddl.metric import Metric
 from pddl.timed_initial_literal import TimedInitialLiteral
 
@@ -19,8 +19,8 @@ class Problem:
         self.requirements : List[str] = []
         self.objects_type_map : Dict[str,str] = {}
         self.type_objects_map : Dict[str,List[str]] = {}
-        self.propositions : List[DomainFormula] = []
-        self.functions : List[DomainFormula] = []
+        self.propositions : List[AtomicFormula] = []
+        self.functions : List[AtomicFormula] = []
         self.timed_initial_literals : List[TimedInitialLiteral] = []
         self.goal : GoalDescriptor = None
         self.metric : Metric = None

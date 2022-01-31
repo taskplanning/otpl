@@ -1,5 +1,5 @@
 from enum import Enum
-from pddl.domain_expression import ExprComposite
+from pddl.expression import ExprComposite
 
 
 class MetricSpec(Enum):

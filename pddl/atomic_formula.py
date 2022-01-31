@@ -6,7 +6,7 @@ class TypedParameter:
         self.label = label
         self.value = value
 
-class DomainFormula:
+class AtomicFormula:
     """
     A class used to represent an atomic formula from the domain.
     """

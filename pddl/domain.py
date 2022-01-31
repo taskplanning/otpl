@@ -1,7 +1,8 @@
 from typing import Dict, List
+from pddl.derived_predicate import DerivedPredicate
 from pddl.domain_type import DomainType
-from pddl.domain_operator import DomainOperator
-from pddl.domain_formula import DomainFormula
+from pddl.operator import Operator
+from pddl.atomic_formula import AtomicFormula
 
 class Domain:
     """
@@ -19,9 +20,9 @@ class Domain:
         self.types : List[DomainType] = []
         self.constants_type_map : Dict[str,str] = {}
         self.type_constants_map : Dict[str,List[str]] = {}
-        self.predicates : List[DomainFormula] = []
-        self.functions : List[DomainFormula] = []
-        self.operators : List[DomainOperator] = []
+        self.predicates : List[AtomicFormula] = []
+        self.functions : List[AtomicFormula] = []
+        self.operators : List[Operator] = []
         self.derived_predicates : List[DerivedPredicate] = []
 
     def __str__(self) -> str:

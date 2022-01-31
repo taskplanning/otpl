@@ -1,4 +1,4 @@
-from pddl.domain_effect import EffectSimple
+from pddl.effect import EffectSimple
 
 
 class TimedInitialLiteral:

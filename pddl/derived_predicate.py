@@ -1,10 +1,10 @@
-from pddl.domain_condition import GoalDescriptor
-from pddl.domain_formula import DomainFormula
+from pddl.goal_descriptor import GoalDescriptor
+from pddl.atomic_formula import AtomicFormula
 
 
 class DerivedPredicate:
 
-    def __init__(self, condition : GoalDescriptor, predicate : DomainFormula) -> None:
+    def __init__(self, condition : GoalDescriptor, predicate : AtomicFormula) -> None:
         self.condition = condition
         self.predicate = predicate
 
