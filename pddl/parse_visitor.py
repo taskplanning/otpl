@@ -556,12 +556,16 @@ class Parser(pddl22Visitor):
         for name in ctx.typed_name_list():
             for obj in self.visit(name):
                 self.problem.objects_type_map[obj[0]] = obj[1]
-                self.problem.type_objects_map[obj[1]] = obj[0]
+                if obj[1] not in self.problem.type_objects_map:
+                    self.problem.type_objects_map[obj[1]] = []
+                self.problem.type_objects_map[obj[1]].append(obj[0])
         # primitive objects
         if ctx.untyped_name_list():
             for obj in self.visit(ctx.untyped_name_list()):
                 self.problem.objects_type_map[obj[0]] = obj[1]
-                self.problem.type_objects_map[obj[1]] = obj[0]        
+                if obj[1] not in self.problem.type_objects_map:
+                    self.problem.type_objects_map[obj[1]] = []
+                self.problem.type_objects_map[obj[1]].append(obj[0]) 
 
     def visitInit_element_simple(self, ctx: pddl22Parser.Init_element_simpleContext):
         self.problem.propositions.append(self.visit(ctx.atomic_formula()))
