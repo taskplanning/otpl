@@ -11,9 +11,9 @@ class AtomicFormula:
     A class used to represent an atomic formula from the domain.
     """
     
-    def __init__(self, name : str, typed_parameters : List[TypedParameter] = [], grounded : bool = False) -> None:
+    def __init__(self, name : str, typed_parameters : List[TypedParameter] = None, grounded : bool = False) -> None:
         self.name = name
-        self.typed_parameters = typed_parameters
+        self.typed_parameters = typed_parameters if typed_parameters else []
         self.grounded = grounded
         self.function_value = 0.0
 

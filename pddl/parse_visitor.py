@@ -252,7 +252,8 @@ class Parser(pddl22Visitor):
 
     def visitSimple_duration_constraint_simple(self, ctx: pddl22Parser.Simple_duration_constraint_simpleContext):
         comparison_type=Inequality.ComparisonType(ctx.duration_op().getText())
-        lhs = self.visit(ctx.expression())
+        token = ExprBase(expr_type=ExprBase.ExprType.SPECIAL, special_type=ExprBase.SpecialType.DURATION)
+        lhs = ExprComposite([token])
         rhs = self.visit(ctx.expression())
         return DurationInequality(Inequality(comparison_type, lhs, rhs))
 
