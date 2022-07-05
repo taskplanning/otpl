@@ -17,7 +17,7 @@ if __name__ == "__main__":
     arg_parser.add_argument("-v","--verbose", action="store_true", help="Verbose parsing (not yet implemented).")
     args = arg_parser.parse_args()
 
-    if len(args.pddl_file) > 2: 
+    if len(args.pddl_file) > 2 or len(args.pddl_file) == 0:: 
         arg_parser.print_help()
         sys.exit(0)
     
