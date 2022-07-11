@@ -40,7 +40,8 @@ class Operator:
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Operator':
         """
-        Binds the parameters of a copy of the operator to the given list of parameters.
+        parameters: list of TypedParameter whose type and label must match the type and label of the operator.
+        returns a copy of the operator whose conditions and effects have been grounded with the given values.
         """
         return Operator(
             self.formula.bind_parameters(parameters),
