@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import List
-from pddl.atomic_formula import AtomicFormula
+from pddl.atomic_formula import AtomicFormula, TypedParameter
 
 class ExprBase:
     """
@@ -49,6 +49,21 @@ class ExprBase:
         elif self.expr_type == ExprBase.ExprType.SPECIAL:
             return self.special_type.value
 
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'ExprBase':
+        """
+        Binds the parameters of a copy of the expression to the given list of parameters.
+        """
+        if self.expr_type == ExprBase.ExprType.CONSTANT:
+            return ExprBase(ExprBase.ExprType.CONSTANT, self.constant)
+        elif self.expr_type == ExprBase.ExprType.FUNCTION:
+            return ExprBase(ExprBase.ExprType.FUNCTION, self.function.bind_parameters(parameters))
+        elif self.expr_type == ExprBase.ExprType.BINARY_OPERATOR:
+            return ExprBase(ExprBase.ExprType.BINARY_OPERATOR, self.op)
+        elif self.expr_type == ExprBase.ExprType.UMINUS:
+            return ExprBase(ExprBase.ExprType.UMINUS)
+        elif self.expr_type == ExprBase.ExprType.SPECIAL:
+            return ExprBase(ExprBase.ExprType.SPECIAL, special_type=self.special_type)
+
 class ExprComposite:   
     """
     A class used to represent a numerical expression (composite)
@@ -74,3 +89,9 @@ class ExprComposite:
                     return_string += ")"
                     op_stack = 0
         return return_string
+
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'ExprComposite':
+        """
+        Binds the parameters of a copy of the expression to the given list of parameters.
+        """
+        return ExprComposite([token.bind_parameters(parameters) for token in self.tokens])

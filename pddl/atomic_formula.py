@@ -14,7 +14,6 @@ class AtomicFormula:
     def __init__(self, name : str, typed_parameters : List[TypedParameter] = None, grounded : bool = False) -> None:
         self.name = name
         self.typed_parameters = typed_parameters if typed_parameters else []
-        self.grounded = grounded
         self.function_value = 0.0
 
     def print_pddl(self, include_types=False):
@@ -27,3 +26,19 @@ class AtomicFormula:
                 (p.value if p.value else p.label) \
                 + (" - " + p.type if include_types else '') \
                 for p in self.typed_parameters]) + ")"
+
+    def __repr__(self):
+        return self.print_pddl(False)
+
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'AtomicFormula':
+        """
+        Binds the parameters of a copy of the atomic formula to the given list of parameters.
+        """
+        bound_parameters : list[TypedParameter] = []
+        for parameter in self.typed_parameters:
+            bound_parameters.append(TypedParameter(parameter.type, parameter.label))
+            for p in parameters:
+                if p.label == parameter.label:
+                    bound_parameters[-1].value = p.value
+                    break                
+        return AtomicFormula(self.name, bound_parameters)

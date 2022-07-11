@@ -3,6 +3,7 @@ from pddl.derived_predicate import DerivedPredicate
 from pddl.domain_type import DomainType
 from pddl.operator import Operator
 from pddl.atomic_formula import AtomicFormula
+from pddl.symbol_table import SymbolTable
 
 class Domain:
     """
@@ -17,13 +18,24 @@ class Domain:
     def __init__(self, domain_name : str) -> None:
         self.domain_name = domain_name    
         self.requirements : List[str] = []
-        self.types : List[DomainType] = []
+        self.type_tree : Dict[str, DomainType] = {}
         self.constants_type_map : Dict[str,str] = {}
         self.type_constants_map : Dict[str,List[str]] = {}
-        self.predicates : List[AtomicFormula] = []
-        self.functions : List[AtomicFormula] = []
-        self.operators : List[Operator] = []
+        self.predicates : Dict[str, AtomicFormula] = {}
+        self.functions : Dict[str, AtomicFormula] = {}
+        self.operators : Dict[str,Operator] = {}
         self.derived_predicates : List[DerivedPredicate] = []
+
+    def is_sub_type(self, type : str, parent : str) -> bool:
+        """
+        Checks if type is a subtype of parent.
+        """
+        if type == parent:
+            return True
+        if type not in self.type_tree:
+            return False
+        return self.is_sub_type(self.type_tree[type].parent, parent)
+        
 
     def __str__(self) -> str:
 
@@ -32,10 +44,9 @@ class Domain:
             + "(:requirements " + " ".join(self.requirements) + ")\n"
 
         # types
-        # TODO print type tree in order
-        if self.types:
+        if self.type_tree:
             return_string += "(:types\n"
-            for type in self.types:
+            for _, type in self.type_tree.items():
                 return_string += "  " + type.name + " - " + type.parent + "\n"
             return_string += ")\n"
 
@@ -49,14 +60,14 @@ class Domain:
         # predicates
         if self.predicates:
             return_string += "(:predicates\n"
-            for pred in self.predicates:
+            for _, pred in self.predicates.items():
                 return_string += "  " + pred.print_pddl(include_types=True) + "\n"
             return_string += ")\n"
 
         # functions
         if self.functions:
             return_string += "(:functions\n"
-            for func in self.functions:
+            for _, func in self.functions.items():
                 return_string += "  " + func.print_pddl(include_types=True) + "\n"
             return_string += ")\n"
 
@@ -65,7 +76,7 @@ class Domain:
             return_string += str(der) + "\n"
 
         # operators
-        for op in self.operators:
+        for _, op in self.operators.items():
             return_string += str(op) + "\n"
 
         # end domain

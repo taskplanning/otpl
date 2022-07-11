@@ -1,6 +1,5 @@
-from typing import List
 from pddl.duration import Duration
-from pddl.atomic_formula import AtomicFormula
+from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.effect import Effect
 from pddl.goal_descriptor import GoalDescriptor
 
@@ -36,4 +35,17 @@ class Operator:
                 + str(self.effect) + "\n" \
                 + ")"
     
+    def print_pddl(self) -> str:
+        return self.formula.print_pddl(include_types=False)
 
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'Operator':
+        """
+        Binds the parameters of a copy of the operator to the given list of parameters.
+        """
+        return Operator(
+            self.formula.bind_parameters(parameters),
+            durative=self.durative,
+            duration=self.duration.bind_parameters(parameters),
+            condition=self.condition.bind_parameters(parameters),
+            effect=self.effect.bind_parameters(parameters)
+        )

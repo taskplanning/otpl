@@ -1,4 +1,5 @@
 from enum import Enum
+from pddl.atomic_formula import TypedParameter
 from pddl.goal_descriptor import GoalDescriptor, GoalType
 from pddl.expression import ExprComposite
 
@@ -28,3 +29,6 @@ class Inequality(GoalDescriptor):
     
     def __repr__(self) -> str:
         return "(" + self.comparison_type.value + " " + str(self.lhs) + " " + str(self.rhs) + ")"
+
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
+        return Inequality(self.comparison_type, self.lhs.bind_parameters(parameters), self.rhs.bind_parameters(parameters))

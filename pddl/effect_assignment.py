@@ -1,6 +1,6 @@
 from enum import Enum
 from pddl.effect import Effect, EffectType
-from pddl.atomic_formula import AtomicFormula
+from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.expression import ExprComposite
 
 
@@ -34,3 +34,9 @@ class Assignment(Effect):
         elif self.assign_type == AssignmentType.DECREASE_CTS:
             return "(decrease " + self.lhs.print_pddl() + ' ' + repr(self.rhs) + ')' 
         return "(" + self.assign_type.value + " " + self.lhs.print_pddl() + ' ' + repr(self.rhs) + ')' 
+
+    def bind_parameters(self, parameters: list[TypedParameter]) -> 'Effect':
+        """
+        Binds the parameters of the effect to the given parameters.
+        """
+        return Assignment(self.assign_type, self.lhs.bind_parameters(parameters), self.rhs.bind_parameters(parameters))
