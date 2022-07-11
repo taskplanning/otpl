@@ -4,8 +4,8 @@ The implementation of comparison goals is implemented in DomainInequality.
 """
 from typing import Union, List
 from enum import Enum
-from pddl.domain_formula import DomainFormula, TypedParameter
-from pddl.domain_time_spec import TIME_SPEC 
+from pddl.atomic_formula import AtomicFormula, TypedParameter
+from pddl.time_spec import TimeSpec 
 
 
 class GoalType(Enum):
@@ -32,16 +32,23 @@ class GoalDescriptor:
     def __repr__(self) -> str:
         return "()"
 
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
+        """
+        Binds the parameters of a copy of the goal to the given list of parameters.
+        """
+        return GoalDescriptor()
 
 class GoalSimple(GoalDescriptor):
 
-    def __init__(self, atomic_formula : DomainFormula) -> None:
+    def __init__(self, atomic_formula : AtomicFormula) -> None:
         super().__init__(goal_type=GoalType.SIMPLE)
         self.atomic_formula = atomic_formula
 
     def __repr__(self) -> str:
         return self.atomic_formula.print_pddl(include_types=False)
 
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
+        return GoalSimple(self.atomic_formula.bind_parameters(parameters))
 
 class GoalConjunction(GoalDescriptor):
 
@@ -52,6 +59,8 @@ class GoalConjunction(GoalDescriptor):
     def __repr__(self) -> str:
         return "(and " + " ".join([repr(g) for g in self.goals]) + ")"
 
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
+        return GoalConjunction([g.bind_parameters(parameters) for g in self.goals])
 
 class GoalDisjunction(GoalDescriptor):
 
@@ -62,6 +71,8 @@ class GoalDisjunction(GoalDescriptor):
     def __repr__(self) -> str:
         return "(or " + " ".join([repr(g) for g in self.goals]) + ")"
 
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
+        return GoalDisjunction([g.bind_parameters(parameters) for g in self.goals])
 
 class GoalNegative(GoalDescriptor):
 
@@ -72,6 +83,8 @@ class GoalNegative(GoalDescriptor):
     def __repr__(self) -> str:
         return "(not " + repr(self.goal) + ")"
         
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
+        return GoalNegative(self.goal.bind_parameters(parameters))
 
 class GoalImplication(GoalDescriptor):
 
@@ -83,6 +96,8 @@ class GoalImplication(GoalDescriptor):
     def __repr__(self) -> str:
         return "(imples " + repr(self.antecedent) + " " + repr(self.consequent) + ")"
 
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
+        return GoalImplication(self.antecedent.bind_parameters(parameters), self.consequent.bind_parameters(parameters))
 
 class GoalQuantified(GoalDescriptor):
 
@@ -101,16 +116,24 @@ class GoalQuantified(GoalDescriptor):
             + ' '.join([p.label + " - " + p.type for p in self.typed_parameters]) \
             + ") " + repr(self.goal) + ")"
 
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
+        """
+        Binds the unquantified parameters of an ungrounded goal to the given list of parameters.
+        """
+        return GoalQuantified(self.typed_parameters, self.goal.bind_parameters(parameters), self.goal_type)
 
 class TimedGoal(GoalDescriptor):
     """
     This class describes a simple add or delete effect with time specifier for durative action.
     """
 
-    def __init__(self, time_spec : TIME_SPEC, goal : GoalDescriptor) -> None:
+    def __init__(self, time_spec : TimeSpec, goal : GoalDescriptor) -> None:
         super().__init__(goal_type=GoalType.TIMED)
         self.time_spec = time_spec
         self.goal = goal
 
     def __repr__(self) -> str:
         return "(" + self.time_spec.value + " " + str(self.goal) + ")"
+
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
+        return TimedGoal(self.time_spec, self.goal.bind_parameters(parameters))

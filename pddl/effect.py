@@ -4,10 +4,10 @@ The implementation of assignment goals is implemented in DomainAssignment.
 """
 from typing import List, Union
 from enum import Enum
-from pddl.domain_condition import GoalDescriptor
-from pddl.domain_expression import ExprComposite
-from pddl.domain_formula import DomainFormula, TypedParameter
-from pddl.domain_time_spec import TIME_SPEC
+from pddl.goal_descriptor import GoalDescriptor
+from pddl.expression import ExprComposite
+from pddl.atomic_formula import AtomicFormula, TypedParameter
+from pddl.time_spec import TimeSpec
         
 
 class EffectType(Enum):
@@ -29,6 +29,12 @@ class Effect:
     def __repr__(self) -> str:
         return "()"
 
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
+        """
+        Binds the parameters of a copy of the effect to the given list of parameters.
+        """
+        return Effect()
+
 class EffectConjunction(Effect):
 
     def __init__(self, effects : List[Effect]) -> None:
@@ -37,6 +43,9 @@ class EffectConjunction(Effect):
 
     def __repr__(self) -> str:
         return "(and " + " ".join([repr(e) for e in self.effects]) + ")"
+
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
+        return EffectConjunction([e.bind_parameters(parameters) for e in self.effects])
 
 class EffectForall(Effect):
 
@@ -53,6 +62,11 @@ class EffectForall(Effect):
             + ' '.join([p.label + " - " + p.type for p in self.typed_parameters]) \
             + ") " + repr(self.effect) + ")"
 
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
+        """
+        Binds the unquantified parameters of the effect to the given list of parameters.
+        """
+        return EffectForall(self.typed_parameters, self.effect.bind_parameters(parameters))
 
 class EffectConditional(Effect):
 
@@ -67,31 +81,43 @@ class EffectConditional(Effect):
     def __repr__(self) -> str:
         return "(when " + repr(self.condition) + " " + repr(self.effect) + ")"
 
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
+        return EffectConditional(self.condition.bind_parameters(parameters), self.effect.bind_parameters(parameters))
+
 class EffectSimple(Effect):
 
-    def __init__(self, formula : DomainFormula) -> None:
+    def __init__(self, formula : AtomicFormula) -> None:
         super().__init__(effect_type=EffectType.SIMPLE)
         self.formula = formula
 
     def __repr__(self) -> str:
         return self.formula.print_pddl()
 
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
+        return EffectSimple(self.formula.bind_parameters(parameters))
+
 class EffectNegative(EffectSimple):
 
-    def __init__(self, formula : DomainFormula) -> None:
+    def __init__(self, formula : AtomicFormula) -> None:
         super().__init__(formula)
         self.effect_type = EffectType.NEGATIVE
 
     def __repr__(self) -> str:
         return "(not " + self.formula.print_pddl() + ")"
 
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
+        return EffectNegative(self.formula.bind_parameters(parameters))
+
 
 class TimedEffect(Effect):
 
-    def __init__(self, time_spec : TIME_SPEC, effect : Effect) -> None:
+    def __init__(self, time_spec : TimeSpec, effect : Effect) -> None:
         super().__init__(effect_type=EffectType.TIMED)
         self.time_spec = time_spec
         self.effect = effect
 
     def __repr__(self) -> str:
         return "(" + self.time_spec.value + " " + str(self.effect) + ")"
+
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
+        return TimedEffect(self.time_spec, self.effect.bind_parameters(parameters))

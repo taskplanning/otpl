@@ -136,9 +136,9 @@ WS=81
 ':duration'=55
 ':condition'=56
 '?duration'=57
-'(at'=58
+'at'=58
 '='=59
-'(over'=60
+'over'=60
 'start'=61
 'end'=62
 'all'=63

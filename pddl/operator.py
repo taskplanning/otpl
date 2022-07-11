@@ -1,23 +1,19 @@
-from typing import List
-from pddl.domain_duration import DomainDuration
-from pddl.domain_formula import DomainFormula
-from pddl.domain_assignment import DomainAssignment
-from pddl.domain_inequality import DomainInequality
-from pddl.probabilistic_effect import ProbabilisticEffect
-from pddl.domain_effect import Effect, TimedEffect
-from pddl.domain_condition import GoalDescriptor
+from pddl.duration import Duration
+from pddl.atomic_formula import AtomicFormula, TypedParameter
+from pddl.effect import Effect
+from pddl.goal_descriptor import GoalDescriptor
 
 
-class DomainOperator:
+class Operator:
     """ 
     A class used to represent an operator in the domain.
     """
 
     def __init__(self,
             # header
-            formula  : DomainFormula,
+            formula  : AtomicFormula,
             durative : bool,
-            duration : DomainDuration = DomainDuration(),
+            duration : Duration = Duration(),
             condition : GoalDescriptor = GoalDescriptor(),
             effect : Effect = Effect(),
             ) -> None:
@@ -39,4 +35,17 @@ class DomainOperator:
                 + str(self.effect) + "\n" \
                 + ")"
     
+    def print_pddl(self) -> str:
+        return self.formula.print_pddl(include_types=False)
 
+    def bind_parameters(self, parameters : list[TypedParameter]) -> 'Operator':
+        """
+        Binds the parameters of a copy of the operator to the given list of parameters.
+        """
+        return Operator(
+            self.formula.bind_parameters(parameters),
+            durative=self.durative,
+            duration=self.duration.bind_parameters(parameters),
+            condition=self.condition.bind_parameters(parameters),
+            effect=self.effect.bind_parameters(parameters)
+        )

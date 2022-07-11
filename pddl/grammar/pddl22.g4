@@ -234,7 +234,7 @@ duration_constraint
 
 simple_duration_constraint
   : '(' duration_op '?duration' expression ')' #simple_duration_constraint_simple
-  | '(at' time_specifier simple_duration_constraint ')' #simple_duration_constraint_timed
+  | '(' 'at' time_specifier simple_duration_constraint ')' #simple_duration_constraint_timed
   ;
 
 duration_op
@@ -254,8 +254,8 @@ timed_goal_descriptor
   ;
 
 time_specifier_prefix
-  : '(at'
-  | '(over'
+  : '(' 'at'
+  | '(' 'over'
   ;
  
 time_specifier
@@ -273,8 +273,8 @@ durative_action_effect
   ;
 
 timed_effect
-  : '(at' time_specifier c_effect ')' #timed_effect_timed
-  | '(at' time_specifier function_assign_durative ')' #timed_effect_assign
+  : '(' 'at' time_specifier c_effect ')' #timed_effect_timed
+  | '(' 'at' time_specifier function_assign_durative ')' #timed_effect_assign
   | '(' assign_op_t atomic_formula expression_t ')' #timed_effect_continuous
   ;
 
@@ -332,9 +332,9 @@ init
   ;
 
 init_element
-  : atomic_formula
-  | '(' '=' atomic_formula ')'
-  | '(at' number atomic_formula ')'
+  : atomic_formula #init_element_simple
+  | '(' '=' atomic_formula number ')' #init_element_assign
+  | '(' 'at' number p_effect ')' #init_element_til
   ;
 
 goal
@@ -351,11 +351,11 @@ optimization
   ;
 
 ground_function_expression
-  : number
-  | '(' binary_operator ground_function_expression ground_function_expression ')'
-  | '(' '-' ground_function_expression ')'
-  | '(' name name* ')'
-  | 'total-time'
+  : number #ground_function_expression_number
+  | '(' binary_operator ground_function_expression ground_function_expression ')' #ground_function_expression_binary
+  | '(' '-' ground_function_expression ')' #ground_function_expression_uminus
+  | '(' name name* ')' #ground_function_expression_function
+  | 'total-time' #ground_function_expression_total_time
   ;
 
 /*-------*/

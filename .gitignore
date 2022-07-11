@@ -1,0 +1,6 @@
+__pycache__
+*.pyc
+
+# antlr files for generating grammar
+antlr-4.9-complete.jar
+.antlr
