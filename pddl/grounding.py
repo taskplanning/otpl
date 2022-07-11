@@ -1,6 +1,4 @@
-from bdb import Breakpoint
 import numpy as np
-from typing import Dict, List
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.domain import Domain
 from pddl.effect import Effect, EffectType
@@ -73,7 +71,7 @@ class Grounding:
         for type in self.domain.type_tree.keys():
             self.type_counts[type] = len(self.type_symbol_tables[type].symbol_list)
 
-    def ground_symbol_list(self, symbol_table : SymbolTable, formulae : Dict[str, AtomicFormula], heads : Dict[str, int]):
+    def ground_symbol_list(self, symbol_table : SymbolTable, formulae : dict[str, AtomicFormula], heads : dict[str, int]):
         head = 0
         for name in symbol_table.symbol_list:
             ground_formulae = 0
@@ -111,7 +109,7 @@ class Grounding:
         id += self.get_id_from_parameters(action.formula.typed_parameters)
         return id
 
-    def get_id_from_parameters(self, params : List[TypedParameter]) -> int:
+    def get_id_from_parameters(self, params : list[TypedParameter]) -> int:
         id = 0
         obj_count = 1
         for param in params[::-1]:
@@ -146,7 +144,7 @@ class Grounding:
                 op = self.domain.operators[name].bind_parameters(params)
                 return op
 
-    def get_parameters_from_id(self, id : int, params : List[TypedParameter]) -> List[TypedParameter]:
+    def get_parameters_from_id(self, id : int, params : list[TypedParameter]) -> list[TypedParameter]:
         ground_parameters = []
         for param in params:
             obj_count = self.type_counts[param.type]
@@ -203,17 +201,20 @@ class Grounding:
     def get_simple_conditions(self, condition : GoalDescriptor,
                                     positive_conditions : np.ndarray,
                                     negative_conditions : np.ndarray,
-                                    time_spec : TimeSpec = TimeSpec.AT_START) -> None:
+                                    time_spec : TimeSpec = TimeSpec.AT_START,
+                                    is_negative : bool = False) -> None:
         """
         Sets the values of the positive_conditions and negative_conditions arrays to True
         for each simple condition in the conditions.
         """
         if condition.goal_type == GoalType.SIMPLE:
             id = self.get_id_from_proposition(condition.atomic_formula)
-            positive_conditions[id] = True
+            if is_negative: 
+                negative_conditions[id] = True
+            else:
+                positive_conditions[id] = True
         elif condition.goal_type == GoalType.NEGATIVE:
-            id = self.get_id_from_proposition(condition.atomic_formula)
-            negative_conditions[id] = True
+            self.get_simple_conditions(condition.goal, positive_conditions, negative_conditions, time_spec, not is_negative)
         elif condition.goal_type == GoalType.CONJUNCTION:
             for c in condition.goals:
                 self.get_simple_conditions(c, positive_conditions, negative_conditions, time_spec)
