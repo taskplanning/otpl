@@ -6,7 +6,7 @@ from pddl.parse_visitor import Parser
 
 if __name__ == "__main__":
     """
-    This script is used to test the RelaxedPlanGraph class.
+    This script uses the RelaxedPlanGraph class.
     First it parses the PDDL domain and problem files.
     Then it builds the relaxed plan graph.
     """
