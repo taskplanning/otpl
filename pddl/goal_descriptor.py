@@ -2,7 +2,6 @@
 This file defines and implements the basic goal descriptors for PDDL2.2.
 The implementation of comparison goals is implemented in DomainInequality.
 """
-from typing import Union, List
 from enum import Enum
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.time_spec import TimeSpec 
@@ -12,7 +11,7 @@ class GoalType(Enum):
     EMPTY       = "empty"
     SIMPLE      = "conjunction"
     CONJUNCTION = "inequality"
-    DISJUNCTION = "timed"
+    DISJUNCTION = "disjunction"
     NEGATIVE    = "negative"
     IMPLICATION = "implication"
     EXISTENTIAL = "existential"
@@ -37,6 +36,12 @@ class GoalDescriptor:
         Binds the parameters of a copy of the goal to the given list of parameters.
         """
         return GoalDescriptor()
+    
+    def filter_goal_to_time_spec(self, time_spec : TimeSpec) -> 'GoalDescriptor':
+        """
+        Filters the goals to the given time spec.
+        """
+        return self
 
 class GoalSimple(GoalDescriptor):
 
@@ -45,14 +50,14 @@ class GoalSimple(GoalDescriptor):
         self.atomic_formula = atomic_formula
 
     def __repr__(self) -> str:
-        return self.atomic_formula.print_pddl(include_types=False)
+        return self.atomic_formula.print_pddl(include_types=True)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
         return GoalSimple(self.atomic_formula.bind_parameters(parameters))
 
 class GoalConjunction(GoalDescriptor):
 
-    def __init__(self, goals : List[GoalDescriptor]) -> None:
+    def __init__(self, goals : list[GoalDescriptor]) -> None:
         super().__init__(goal_type=GoalType.CONJUNCTION)
         self.goals = goals
 
@@ -62,9 +67,13 @@ class GoalConjunction(GoalDescriptor):
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
         return GoalConjunction([g.bind_parameters(parameters) for g in self.goals])
 
+    def filter_goal_to_time_spec(self, time_spec : TimeSpec) -> 'GoalDescriptor':
+        goals = [g.filter_goal_to_time_spec(time_spec) for g in self.goals]
+        return GoalConjunction([g for g in goals if g])
+
 class GoalDisjunction(GoalDescriptor):
 
-    def __init__(self, goals : List[GoalDescriptor]) -> None:
+    def __init__(self, goals : list[GoalDescriptor]) -> None:
         super().__init__(goal_type=GoalType.DISJUNCTION)
         self.goals = goals
 
@@ -102,7 +111,7 @@ class GoalImplication(GoalDescriptor):
 class GoalQuantified(GoalDescriptor):
 
     def __init__(self,
-            typed_parameters : List[TypedParameter],
+            typed_parameters : list[TypedParameter],
             goal : GoalDescriptor,
             quantification : GoalType
             ) -> None:
@@ -137,3 +146,8 @@ class TimedGoal(GoalDescriptor):
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
         return TimedGoal(self.time_spec, self.goal.bind_parameters(parameters))
+
+    def filter_goal_to_time_spec(self, time_spec : TimeSpec) -> 'GoalDescriptor':
+        if time_spec == self.time_spec:
+            return self
+        return None

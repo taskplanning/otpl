@@ -40,3 +40,4 @@ if __name__ == "__main__":
     rpg = RelaxedPlanGraph(pddl_parser.domain, pddl_parser.problem, pddl_parser.grounding)
     rpg.build_graph(stop_at_goal=True)
     print("Building relaxed plan graph took %.2f seconds." % (time.time() - start_time))
+    print("Relaxed plan graph has %d layers." % len(rpg.fact_layers))

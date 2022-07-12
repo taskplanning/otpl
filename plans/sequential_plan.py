@@ -6,11 +6,13 @@ import numpy as np
 from pddl.atomic_formula import TypedParameter
 from pddl.grounding import Grounding
 from pddl.operator import Operator
-from pddl.parse_visitor import Parser
 from pddl.domain import Domain
 from pddl.problem import Problem
 
 class PlanSequential:
+    """
+    Represents a plan as a list of STRIPS actions.
+    """
 
     def __init__(self, domain : Domain, problem : Problem, grounding : Grounding):
         self.domain : Domain = domain

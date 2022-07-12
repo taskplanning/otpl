@@ -68,6 +68,7 @@ class Grounding:
         self.action_count = self.last_symbol_count
 
     def ground_object_list(self):
+        self.type_counts["object"] = len(self.problem.objects_type_map) + len(self.domain.constants_type_map)
         for type in self.domain.type_tree.keys():
             self.type_counts[type] = len(self.type_symbol_tables[type].symbol_list)
 
@@ -77,15 +78,16 @@ class Grounding:
             ground_formulae = 0
             for param in formulae[name].typed_parameters:
                 type = param.type
-                count = 0
-                if type in self.type_symbol_tables:
-                    count = len(self.type_symbol_tables[type].symbol_list)
+                count = len(self.type_symbol_tables[type].symbol_list) if type in self.type_symbol_tables else 0
                 if ground_formulae == 0:
                     ground_formulae = count
                 else:
                     ground_formulae = ground_formulae * count
                 # no objects can bind to this parameter so there are no ground symbols
                 if count==0: break
+            # special case for formula with no parameters
+            if len(formulae[name].typed_parameters)==0:
+                ground_formulae = 1
             heads[name] = (head, head + ground_formulae)
             self.last_symbol_count = head + ground_formulae
             head = head + ground_formulae
@@ -104,10 +106,13 @@ class Grounding:
         id += self.get_id_from_parameters(formula.typed_parameters)
         return id
 
-    def get_id_from_action(self, action : Operator) -> int:
-        id = self.operator_heads[action.formula.name][0]
-        id += self.get_id_from_parameters(action.formula.typed_parameters)
+    def get_id_from_action_formula(self, formula : AtomicFormula) -> int:
+        id = self.operator_heads[formula.name][0]
+        id += self.get_id_from_parameters(formula.typed_parameters)
         return id
+
+    def get_id_from_action(self, action : Operator) -> int:
+        return self.get_id_from_action_formula(action.formula)
 
     def get_id_from_parameters(self, params : list[TypedParameter]) -> int:
         id = 0
@@ -176,13 +181,13 @@ class Grounding:
         If not, it will create a new spike and cache it.
         return numpy array of propositional action conditions.
         """
-        if id in self.action_condition_spikes and id in self.action_negative_condition_spikes:
-            return self.action_condition_spikes[id], self.action_negative_condition_spikes[id]
+        if (id, time_spec) in self.action_condition_spikes and (id, time_spec) in self.action_negative_condition_spikes:
+            return self.action_condition_spikes[(id, time_spec)], self.action_negative_condition_spikes[(id, time_spec)]
         else:
             action = self.get_action_from_id(id)
             pos, neg = self.get_action_condition_spike(action, time_spec)
-            self.action_condition_spikes[id] = pos
-            self.action_negative_condition_spikes[id] = neg
+            self.action_condition_spikes[(id, time_spec)] = pos
+            self.action_negative_condition_spikes[(id, time_spec)] = neg
             return pos, neg
 
     def get_action_condition_spike(self, action : Operator, time_spec : TimeSpec = TimeSpec.AT_START) -> tuple[np.ndarray]:
@@ -231,13 +236,13 @@ class Grounding:
         If not, it will create a new spike and cache it.
         return numpy array of propositional action simple effects.
         """
-        if id in self.action_add_effect_spikes and id in self.action_del_effect_spikes:
-            return self.action_add_effect_spikes[id], self.action_del_effect_spikes[id]
+        if (id, time_spec) in self.action_add_effect_spikes and (id, time_spec) in self.action_del_effect_spikes:
+            return self.action_add_effect_spikes[(id, time_spec)], self.action_del_effect_spikes[(id, time_spec)]
         else:
             action = self.get_action_from_id(id)
             pos, neg = self.get_action_effect_spike(action, time_spec)
-            self.action_add_effect_spikes[id] = pos
-            self.action_del_effect_spikes[id] = neg
+            self.action_add_effect_spikes[(id, time_spec)] = pos
+            self.action_del_effect_spikes[(id, time_spec)] = neg
             return pos, neg
 
     def get_action_effect_spike(self, action : Operator, time_spec : TimeSpec = TimeSpec.AT_START) -> tuple[np.ndarray]:      

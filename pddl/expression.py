@@ -54,11 +54,11 @@ class ExprBase:
         Binds the parameters of a copy of the expression to the given list of parameters.
         """
         if self.expr_type == ExprBase.ExprType.CONSTANT:
-            return ExprBase(ExprBase.ExprType.CONSTANT, self.constant)
+            return ExprBase(ExprBase.ExprType.CONSTANT, constant=self.constant)
         elif self.expr_type == ExprBase.ExprType.FUNCTION:
-            return ExprBase(ExprBase.ExprType.FUNCTION, self.function.bind_parameters(parameters))
+            return ExprBase(ExprBase.ExprType.FUNCTION, function=self.function.bind_parameters(parameters))
         elif self.expr_type == ExprBase.ExprType.BINARY_OPERATOR:
-            return ExprBase(ExprBase.ExprType.BINARY_OPERATOR, self.op)
+            return ExprBase(ExprBase.ExprType.BINARY_OPERATOR, op=self.op)
         elif self.expr_type == ExprBase.ExprType.UMINUS:
             return ExprBase(ExprBase.ExprType.UMINUS)
         elif self.expr_type == ExprBase.ExprType.SPECIAL:
