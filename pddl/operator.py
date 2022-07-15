@@ -13,15 +13,15 @@ class Operator:
             # header
             formula  : AtomicFormula,
             durative : bool,
-            duration : Duration = Duration(),
-            condition : GoalDescriptor = GoalDescriptor(),
-            effect : Effect = Effect(),
+            duration : Duration = None,
+            condition : GoalDescriptor = None,
+            effect : Effect = None,
             ) -> None:
         self.formula = formula
         self.durative = durative
-        self.duration = duration
-        self.condition = condition
-        self.effect = effect
+        self.duration = duration if duration else Duration()
+        self.condition = condition if condition else GoalDescriptor()
+        self.effect = effect if effect else Effect()
 
     def __str__(self) -> str:
         # TODO checking for empty parameters and conditions
