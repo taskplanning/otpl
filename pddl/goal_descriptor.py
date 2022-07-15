@@ -50,7 +50,7 @@ class GoalSimple(GoalDescriptor):
         self.atomic_formula = atomic_formula
 
     def __repr__(self) -> str:
-        return self.atomic_formula.print_pddl(include_types=True)
+        return self.atomic_formula.print_pddl(include_types=False)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
         return GoalSimple(self.atomic_formula.bind_parameters(parameters))

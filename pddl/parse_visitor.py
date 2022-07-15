@@ -16,7 +16,7 @@ from pddl.domain_type import DomainType
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.goal_descriptor_inequality import Inequality
 from pddl.operator import Operator
-from pddl.duration import Duration, DurationConjunction, DurationInequality, DurationTimed
+from pddl.duration import DurationType, Duration, DurationConjunction, DurationInequality, DurationTimed
 from pddl.goal_descriptor import GoalConjunction, GoalDescriptor, GoalDisjunction, GoalImplication, GoalNegative, GoalQuantified, GoalSimple, GoalType, TimedGoal
 from pddl.metric import Metric, MetricSpec
 from pddl.problem import Problem
@@ -277,7 +277,7 @@ class Parser(pddl22Visitor):
         elif ctx.time_specifier().getText() == "end":
             time_spec = TimeSpec.AT_END
         inequality=self.visit(ctx.simple_duration_constraint())
-        assert(inequality.duration_type == Duration.DurationType.INEQUALITY)
+        assert(inequality.duration_type == DurationType.INEQUALITY)
         DurationTimed(time_spec, inequality)
 
     #===============#
@@ -482,7 +482,7 @@ class Parser(pddl22Visitor):
             effect=effect)
 
         self.grounding.operator_table.add_symbol(op_formula.name)
-        self.domain.operators[op_formula.name] = (self.operator)
+        self.domain.operators[op_formula.name] = self.operator
 
     def visitDurative_action_def(self, ctx:pddl22Parser.Durative_action_defContext):
 
@@ -505,7 +505,7 @@ class Parser(pddl22Visitor):
             effect=effect)
 
         self.grounding.operator_table.add_symbol(op_formula.name)
-        self.domain.operators[op_formula.name] = (self.operator)
+        self.domain.operators[op_formula.name] = self.operator
 
     #====================#
     # derived predicates #
@@ -540,12 +540,17 @@ class Parser(pddl22Visitor):
             for obj in self.visit(name):
                 self.domain.constants_type_map[obj[0]] = obj[1]
                 self.domain.type_constants_map[obj[1]] = obj[0]
+                if obj[1] not in self.domain.type_constants_map:
+                    self.domain.type_constants_map[obj[1]] = []
+                self.domain.type_constants_map[obj[1]].append(obj[0]) 
                 self.update_type_symbol_table(obj[0], obj[1])
         # primitive objects
         if ctx.untyped_name_list():
             for obj in self.visit(ctx.untyped_name_list()):
                 self.domain.constants_type_map[obj[0]] = obj[1]
-                self.domain.type_constants_map[obj[1]] = obj[0]
+                if obj[1] not in self.domain.type_constants_map:
+                    self.domain.type_constants_map[obj[1]] = []
+                self.domain.type_constants_map[obj[1]].append(obj[0]) 
                 self.update_type_symbol_table(obj[0], obj[1])
 
     def update_type_symbol_table(self, obj_name : str, obj_type : str):

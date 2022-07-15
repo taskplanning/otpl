@@ -25,6 +25,25 @@ class Problem:
         self.goal : GoalDescriptor = None
         self.metric : Metric = None
 
+    # ======= #
+    # Setters #
+    # ======= #
+
+    def add_object(self, name : str, type : str = "object"):
+        """
+        Adds a new object to the domain.
+        param name: the name of the new object.
+        param type: the type of the new object.
+        """
+        if type not in self.type_objects_map:
+            self.type_objects_map[type] = []
+        self.objects_type_map[name] = type
+        self.type_objects_map[type].append(name)
+
+    # ======== #
+    # Printing #
+    # ======== #
+
     def __str__(self) -> str:
 
         # header
