@@ -585,7 +585,7 @@ class Parser(pddl22Visitor):
         self.parsing_state = "problem"
         self.problem = Problem(
             problem_name=ctx.name()[0].getText(),
-            domain_name=ctx.name()[1].getText())
+            domain=self.domain)
         self.visitChildren(ctx)
         self.parsing_state = "none"
 

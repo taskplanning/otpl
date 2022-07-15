@@ -49,6 +49,22 @@ class Grounding:
     # Setting heads values #
     #======================#
 
+    def prepare_symbol_tables(self, domain : Domain, problem : Problem):
+
+        for name, _ in domain.operators.items():
+            self.operator_table.add_symbol(name)
+        for name, _ in domain.predicates.items():
+            self.predicate_table.add_symbol(name)
+        for name, _ in domain.functions.items():
+            self.function_table.add_symbol(name)
+        for type in domain.type_tree.keys():
+            self.type_symbol_tables[type] = SymbolTable()
+            # TODO replace with map
+            for obj in problem.type_objects_map[type]:
+                self.type_symbol_tables[type].add_symbol(obj)
+            for obj in domain.type_constants_map[type]:
+                self.type_symbol_tables[type].add_symbol(obj)
+
     def ground_problem(self, domain : Domain, problem : Problem):
 
         if self.grounded:

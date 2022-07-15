@@ -197,6 +197,8 @@ class PlanTemporalNetwork:
 
             adds, dels = self.grounding.get_action_effect_spike_from_id(self.happenings[inter_index].action_id, time_spec)
 
+            # TODO fix interference not being found in the match domain
+
             # check if the effects interfere with the support
             if np.any(np.logical_and(pos_support, dels)) or np.any(np.logical_and(neg_support, adds)):
                 source, sink = -1, -1
@@ -209,6 +211,7 @@ class PlanTemporalNetwork:
                     sink = self.happenings[happening_index].id
                     distance = -self.epsilon
                 elif happening_index < inter_index and condition_time_spec == TimeSpec.OVER_ALL:
+                    
                     source = self.happenings[inter_index].id
                     sink = self.happenings[happening_index+1].id
                     distance = 0.0
