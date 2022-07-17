@@ -1,6 +1,7 @@
 import argparse
 import sys
 import time
+from pddl.grounding import Grounding
 from plan_graphs.relaxed_plan_graph import RelaxedPlanGraph
 from pddl.parse_visitor import Parser
 
@@ -31,13 +32,14 @@ if __name__ == "__main__":
     # after parsing, prepare the grounded representation
     print("Preparing grounded representation...")
     start_time = time.time()
-    pddl_parser.grounding.ground_problem(pddl_parser.domain, pddl_parser.problem)
+    grounding = Grounding()
+    grounding.ground_problem(pddl_parser.domain, pddl_parser.problem)
     print("Preparing grounded representation took %.2f seconds." % (time.time() - start_time))
         
     # build a relaxed plan graph
     print("Building relaxed plan graph...")
     start_time = time.time()
-    rpg = RelaxedPlanGraph(pddl_parser.domain, pddl_parser.problem, pddl_parser.grounding)
+    rpg = RelaxedPlanGraph(pddl_parser.domain, pddl_parser.problem, grounding)
     rpg.build_graph(stop_at_goal=True)
     print("Building relaxed plan graph took %.2f seconds." % (time.time() - start_time))
     print("Relaxed plan graph has %d layers." % len(rpg.fact_layers))

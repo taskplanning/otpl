@@ -51,7 +51,7 @@ class TemporalNetwork:
                         return False
         return True
 
-    def find_shortest_path(self, source, sink) -> float:
+    def find_shortest_path(self, source : int, sink : int) -> float:
         """
         find the shortest path using dijkstras search
         """
@@ -109,3 +109,20 @@ class TemporalNetwork:
                 print("\t{} -> {} [label=\"{}\"];".format(node1, node2, self.edges[node1][node2]))
         print("}")
 
+    def print_graph_as_json(self):
+        """
+        print the graph in JSON format.
+        """
+        print("{")
+        print("\t\"nodes\": [")
+        for node in self.nodes:
+            print("\t\t{\"id\": " + str(node) + ", \"label\": \"" + self.labels[node] + "\"},")
+        print("\t],")
+        print("\t\"edges\": [")
+        for node1 in self.nodes:
+            for node2 in self.edges[node1]:
+                if node1 == node2: continue
+                if self.edges[node1][node2] == float("inf"): continue
+                print("\t\t{\"source\": " + str(node1) + ", \"target\": " + str(node2) + ", \"label\": \"" + str(self.edges[node1][node2]) + "\"},")
+        print("\t]")
+        print("}")

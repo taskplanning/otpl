@@ -27,10 +27,12 @@ if __name__ == "__main__":
     pddl_parser = Parser()
     pddl_parser.parse_file(args.domain)
     pddl_parser.parse_file(args.problem)
-    pddl_parser.grounding.ground_problem(pddl_parser.domain, pddl_parser.problem)
+
+    grounding = Grounding()
+    grounding.ground_problem(pddl_parser.domain, pddl_parser.problem)
     
     print("Parsing PDDL plan file...")
-    plan = PlanSequential(pddl_parser.domain, pddl_parser.problem, pddl_parser.grounding)
+    plan = PlanSequential(pddl_parser.domain, pddl_parser.problem, grounding)
     plan.read_from_file(args.plan)
 
     # checking plan vailidity and printing results to screen

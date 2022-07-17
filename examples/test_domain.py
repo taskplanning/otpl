@@ -1,19 +1,12 @@
-from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.domain import Domain
-from pddl.grounding import Grounding
 from pddl.problem import Problem
-from pddl.duration import DurationInequality
-from pddl.effect import EffectConjunction, EffectNegative, EffectSimple, TimedEffect
-from pddl.expression import ExprBase, ExprComposite
-from pddl.goal_descriptor import GoalConjunction, GoalSimple
-from pddl.goal_descriptor_inequality import Inequality
-from pddl.operator import Operator
+from pddl.grounding import Grounding
 from pddl.time_spec import TimeSpec
-from plan_graphs.relaxed_plan_graph import RelaxedPlanGraph
 from plans.temporal_plan import PlanTemporalNetwork
 
 domain = Domain("match_domain")
 
+# types
 domain.add_type("match")
 domain.add_type("fuse")
 
@@ -70,6 +63,4 @@ grounding.ground_problem(domain,problem)
 print("Parsing PDDL plan file...")
 plan = PlanTemporalNetwork(domain, problem, grounding)
 plan.read_from_file("pddl/test_domains/match_plan.pddl")
-
-# print(plan.temporal_network.floyd_warshall())
 plan.temporal_network.print_dot_graph()

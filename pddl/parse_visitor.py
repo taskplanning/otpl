@@ -6,8 +6,6 @@ from pddl.derived_predicate import DerivedPredicate
 from pddl.effect_assignment import AssignmentType, Assignment
 from pddl.effect import Effect, EffectConditional, EffectConjunction, EffectForall, EffectNegative, EffectSimple, TimedEffect
 from pddl.expression import ExprBase, ExprComposite
-from pddl.grounding import Grounding
-from pddl.symbol_table import SymbolTable
 from pddl.time_spec import TimeSpec
 from pddl.grammar.pddl22Parser import pddl22Parser
 from pddl.grammar.pddl22Visitor import pddl22Visitor
@@ -32,7 +30,6 @@ class Parser(pddl22Visitor):
         # parsed objects
         self.domain    : Domain = None
         self.problem   : Problem = None
-        self.grounding : Grounding = None
 
         # temporary parsing objects
         self.inequality = None
@@ -481,7 +478,6 @@ class Parser(pddl22Visitor):
             condition=condition,
             effect=effect)
 
-        self.grounding.operator_table.add_symbol(op_formula.name)
         self.domain.operators[op_formula.name] = self.operator
 
     def visitDurative_action_def(self, ctx:pddl22Parser.Durative_action_defContext):
@@ -504,7 +500,6 @@ class Parser(pddl22Visitor):
             condition=condition,
             effect=effect)
 
-        self.grounding.operator_table.add_symbol(op_formula.name)
         self.domain.operators[op_formula.name] = self.operator
 
     #====================#
@@ -522,7 +517,6 @@ class Parser(pddl22Visitor):
 
     def visitDomain(self, ctx:pddl22Parser.DomainContext):
         self.parsing_state = "domain"
-        self.grounding = Grounding()
         self.domain = Domain(ctx.name().getText())
         self.visitChildren(ctx)
         self.parsing_state = "none"
@@ -543,35 +537,23 @@ class Parser(pddl22Visitor):
                 if obj[1] not in self.domain.type_constants_map:
                     self.domain.type_constants_map[obj[1]] = []
                 self.domain.type_constants_map[obj[1]].append(obj[0]) 
-                self.update_type_symbol_table(obj[0], obj[1])
         # primitive objects
         if ctx.untyped_name_list():
             for obj in self.visit(ctx.untyped_name_list()):
                 self.domain.constants_type_map[obj[0]] = obj[1]
                 if obj[1] not in self.domain.type_constants_map:
                     self.domain.type_constants_map[obj[1]] = []
-                self.domain.type_constants_map[obj[1]].append(obj[0]) 
-                self.update_type_symbol_table(obj[0], obj[1])
-
-    def update_type_symbol_table(self, obj_name : str, obj_type : str):
-        if obj_type not in self.grounding.type_symbol_tables:
-            self.grounding.type_symbol_tables[obj_type] = SymbolTable()
-        self.grounding.type_symbol_tables[obj_type].add_symbol(obj_name)
-        if obj_type in self.domain.type_tree:
-            self.update_type_symbol_table(obj_name, self.domain.type_tree[obj_type].parent)
-
+                self.domain.type_constants_map[obj[1]].append(obj[0])
 
     def visitPredicates_def(self, ctx:pddl22Parser.Predicates_defContext):
         for formula in ctx.atomic_formula_skeleton():
             pred = self.visit(formula)
             self.domain.predicates[pred.name] = pred
-            self.grounding.predicate_table.add_symbol(pred.name)
 
     def visitFunctions_def(self, ctx:pddl22Parser.Functions_defContext):
         for formula in ctx.atomic_formula_skeleton():
             func = self.visit(formula)
             self.domain.functions[func.name] = func
-            self.grounding.function_table.add_symbol(func.name)
 
     #=================#
     # parsing problem #
@@ -598,15 +580,13 @@ class Parser(pddl22Visitor):
                 if obj[1] not in self.problem.type_objects_map:
                     self.problem.type_objects_map[obj[1]] = []
                 self.problem.type_objects_map[obj[1]].append(obj[0])
-                self.update_type_symbol_table(obj[0], obj[1])
         # primitive objects
         if ctx.untyped_name_list():
             for obj in self.visit(ctx.untyped_name_list()):
                 self.problem.objects_type_map[obj[0]] = obj[1]
                 if obj[1] not in self.problem.type_objects_map:
                     self.problem.type_objects_map[obj[1]] = []
-                self.problem.type_objects_map[obj[1]].append(obj[0]) 
-                self.update_type_symbol_table(obj[0], obj[1])
+                self.problem.type_objects_map[obj[1]].append(obj[0])
 
     def visitInit_element_simple(self, ctx: pddl22Parser.Init_element_simpleContext):
         self.problem.propositions.append(self.visit(ctx.atomic_formula()))

@@ -2,12 +2,11 @@ import numpy as np
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.domain import Domain
 from pddl.effect import Effect, EffectType
-from pddl.goal_descriptor import GoalDescriptor, GoalType, TimedGoal
+from pddl.goal_descriptor import GoalDescriptor, GoalType
 from pddl.operator import Operator
 from pddl.problem import Problem
 from pddl.symbol_table import SymbolTable
 from pddl.time_spec import TimeSpec
-
 
 class Grounding:
 
@@ -49,39 +48,51 @@ class Grounding:
     # Setting heads values #
     #======================#
 
-    def prepare_symbol_tables(self, domain : Domain, problem : Problem):
+    def ground_problem(self, domain : Domain, problem : Problem):
 
+        if self.grounded:
+            return
+        self.grounded = True
+
+        self.domain = domain
+        self.problem = problem
+
+        self.prepare_symbol_tables(domain, problem)
+
+        self.ground_object_list()
+
+        self.ground_symbol_list(self.predicate_table, self.domain.predicates, self.predicate_heads)
+        self.proposition_count = self.last_symbol_count
+        
+        self.ground_symbol_list(self.function_table, self.domain.functions, self.function_heads)
+        self.function_count = self.last_symbol_count
+        
+        op_formulae = { op.formula.name: op.formula for op in domain.operators.values() }
+        self.ground_symbol_list(self.operator_table, op_formulae, self.operator_heads)
+        self.action_count = self.last_symbol_count
+
+    def prepare_symbol_tables(self, domain : Domain, problem : Problem):
         for name, _ in domain.operators.items():
             self.operator_table.add_symbol(name)
         for name, _ in domain.predicates.items():
             self.predicate_table.add_symbol(name)
         for name, _ in domain.functions.items():
             self.function_table.add_symbol(name)
+        self.type_symbol_tables["object"] = SymbolTable()
         for type in domain.type_tree.keys():
             self.type_symbol_tables[type] = SymbolTable()
-            # TODO replace with map
-            for obj in problem.type_objects_map[type]:
-                self.type_symbol_tables[type].add_symbol(obj)
-            for obj in domain.type_constants_map[type]:
-                self.type_symbol_tables[type].add_symbol(obj)
+        for type in domain.type_tree.keys():
+            if type in problem.type_objects_map:
+                for obj in problem.type_objects_map[type]:
+                    self.update_type_symbol_table(obj, type)
+            if type in domain.constants_type_map:
+                for obj in domain.constants_type_map[type]:
+                    self.update_type_symbol_table(obj, type)
 
-    def ground_problem(self, domain : Domain, problem : Problem):
-
-        if self.grounded:
-            return
-
-        self.domain = domain
-        self.problem = problem
-
-        self.grounded = True
-        self.ground_object_list()
-        self.ground_symbol_list(self.predicate_table, self.domain.predicates, self.predicate_heads)
-        self.proposition_count = self.last_symbol_count
-        self.ground_symbol_list(self.function_table, self.domain.functions, self.function_heads)
-        self.function_count = self.last_symbol_count
-        op_formulae = { op.formula.name: op.formula for op in domain.operators.values() }
-        self.ground_symbol_list(self.operator_table, op_formulae, self.operator_heads)
-        self.action_count = self.last_symbol_count
+    def update_type_symbol_table(self, obj_name : str, obj_type : str):
+        self.type_symbol_tables[obj_type].add_symbol(obj_name)
+        if obj_type in self.domain.type_tree:
+            self.update_type_symbol_table(obj_name, self.domain.type_tree[obj_type].parent)
 
     def ground_object_list(self):
         self.type_counts["object"] = len(self.problem.objects_type_map) + len(self.domain.constants_type_map)

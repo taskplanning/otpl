@@ -1,10 +1,6 @@
 import argparse
-import sys
-import time
 from pddl.parse_visitor import Parser
 from pddl.grounding import Grounding
-from pddl.domain import Domain
-from pddl.problem import Problem
 from plans.temporal_plan import PlanTemporalNetwork
 
 if __name__ == "__main__":
@@ -27,10 +23,12 @@ if __name__ == "__main__":
     pddl_parser = Parser()
     pddl_parser.parse_file(args.domain)
     pddl_parser.parse_file(args.problem)
-    pddl_parser.grounding.ground_problem(pddl_parser.domain, pddl_parser.problem)
+
+    grounding = Grounding()
+    grounding.ground_problem(pddl_parser.domain, pddl_parser.problem)
     
     print("Parsing PDDL plan file...")
-    plan = PlanTemporalNetwork(pddl_parser.domain, pddl_parser.problem, pddl_parser.grounding)
+    plan = PlanTemporalNetwork(pddl_parser.domain, pddl_parser.problem, grounding)
     plan.read_from_file(args.plan)
 
     print(plan.temporal_network.floyd_warshall())
