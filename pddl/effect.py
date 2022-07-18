@@ -35,6 +35,12 @@ class Effect:
         """
         return Effect()
 
+    def filter_effects_to_time_spec(self, time_spec : TimeSpec) -> 'Effect':
+        """
+        Filters the effects to the given time spec.
+        """
+        return self
+
 class EffectConjunction(Effect):
 
     def __init__(self, effects : List[Effect]) -> None:
@@ -46,6 +52,10 @@ class EffectConjunction(Effect):
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
         return EffectConjunction([e.bind_parameters(parameters) for e in self.effects])
+
+    def filter_effects_to_time_spec(self, time_spec : TimeSpec) -> 'Effect':
+        effects = [e.filter_effects_to_time_spec(time_spec) for e in self.effects]
+        return EffectConjunction([e for e in effects if e])
 
 class EffectForall(Effect):
 
@@ -67,6 +77,7 @@ class EffectForall(Effect):
         Binds the unquantified parameters of the effect to the given list of parameters.
         """
         return EffectForall(self.typed_parameters, self.effect.bind_parameters(parameters))
+
 
 class EffectConditional(Effect):
 
@@ -108,7 +119,6 @@ class EffectNegative(EffectSimple):
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
         return EffectNegative(self.formula.bind_parameters(parameters))
 
-
 class TimedEffect(Effect):
 
     def __init__(self, time_spec : TimeSpec, effect : Effect) -> None:
@@ -121,3 +131,8 @@ class TimedEffect(Effect):
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
         return TimedEffect(self.time_spec, self.effect.bind_parameters(parameters))
+
+    def filter_effects_to_time_spec(self, time_spec : TimeSpec) -> 'Effect':
+        if time_spec == self.time_spec:
+            return self.effect
+        return None

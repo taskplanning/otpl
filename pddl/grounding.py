@@ -1,15 +1,13 @@
-from bdb import Breakpoint
 import numpy as np
-from typing import Dict, List
+from pddl import effect
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.domain import Domain
 from pddl.effect import Effect, EffectType
-from pddl.goal_descriptor import GoalDescriptor, GoalType, TimedGoal
+from pddl.goal_descriptor import GoalDescriptor, GoalType
 from pddl.operator import Operator
 from pddl.problem import Problem
 from pddl.symbol_table import SymbolTable
 from pddl.time_spec import TimeSpec
-
 
 class Grounding:
 
@@ -19,33 +17,45 @@ class Grounding:
         self.problem : Problem = None
 
         # symbol tables for domain and problem
-        self.operator_table = SymbolTable()
-        self.predicate_table = SymbolTable()
-        self.function_table = SymbolTable()
+        self.operator_table  : SymbolTable = SymbolTable()
+        self.predicate_table : SymbolTable = SymbolTable()
+        self.function_table  : SymbolTable = SymbolTable()
         self.type_symbol_tables : dict[str, SymbolTable] = {}
 
         # true if the problem has been grounded
         self.grounded = False
 
         # beginning ID of each symbol
-        self.predicate_heads = {}
-        self.function_heads = {}
-        self.operator_heads = {}
+        self.predicate_heads : dict[str,int] = {}
+        self.function_heads : dict[str,int] = {}
+        self.operator_heads : dict[str,int] = {}
 
         # total counts
-        self.last_symbol_count = 0 
-        self.proposition_count = 0
-        self.function_count = 0
-        self.action_count = 0
+        self.last_symbol_count : int = 0 
+        self.proposition_count : int  = 0
+        self.function_count : int  = 0
+        self.action_count : int  = 0
 
         # number of objects and constants of each type
-        self.type_counts = {}
+        self.type_counts : dict[str,int] = {}
 
         # cached spike representations of action effects and conditions
         self.action_add_effect_spikes = {}
         self.action_del_effect_spikes = {}
-        self.action_condition_spikes = {}
-        self.action_negative_condition_spikes = {}
+        self.action_positive_condition_spikes = {
+            TimeSpec.AT_START : {},
+            TimeSpec.OVER_ALL : {},
+            TimeSpec.AT_END : {}
+        }
+        self.action_negative_condition_spikes = {
+            TimeSpec.AT_START : {},
+            TimeSpec.OVER_ALL : {},
+            TimeSpec.AT_END : {}
+        }
+
+        # static predicates
+        self.statics = {}
+        self.static_offset = 0
 
     #======================#
     # Setting heads values #
@@ -55,41 +65,85 @@ class Grounding:
 
         if self.grounded:
             return
+        self.grounded = True
 
         self.domain = domain
         self.problem = problem
 
-        self.grounded = True
+        # determine which predicates are static
+        self.check_static_predicates()
+
+        # create tables for mapping labels to ids
+        self.prepare_symbol_tables(domain, problem)
+
+        # map labels to ids
         self.ground_object_list()
+
+        # map labels to ids for predicates and functions
         self.ground_symbol_list(self.predicate_table, self.domain.predicates, self.predicate_heads)
         self.proposition_count = self.last_symbol_count
         self.ground_symbol_list(self.function_table, self.domain.functions, self.function_heads)
         self.function_count = self.last_symbol_count
+        
+        # map labels to ids for operators
         op_formulae = { op.formula.name: op.formula for op in domain.operators.values() }
         self.ground_symbol_list(self.operator_table, op_formulae, self.operator_heads)
         self.action_count = self.last_symbol_count
 
+    def prepare_symbol_tables(self, domain : Domain, problem : Problem):
+        # create symbol tables for predicates, ordering statics first
+        for name, _ in domain.predicates.items():
+            if self.statics[name]:
+                self.predicate_table.add_symbol(name)
+        for name, _ in domain.predicates.items():
+            if not self.statics[name]:
+                self.predicate_table.add_symbol(name)
+        # prepare symbol tables for operatorsand functions
+        for name, _ in domain.operators.items():
+            self.operator_table.add_symbol(name)
+        for name, _ in domain.functions.items():
+            self.function_table.add_symbol(name)
+        self.type_symbol_tables["object"] = SymbolTable()
+        for type in domain.type_tree.keys():
+            self.type_symbol_tables[type] = SymbolTable()
+        for type in domain.type_tree.keys():
+            if type in problem.type_objects_map:
+                for obj in problem.type_objects_map[type]:
+                    self.update_type_symbol_table(obj, type)
+            if type in domain.constants_type_map:
+                for obj in domain.constants_type_map[type]:
+                    self.update_type_symbol_table(obj, type)
+
+    def update_type_symbol_table(self, obj_name : str, obj_type : str):
+        self.type_symbol_tables[obj_type].add_symbol(obj_name)
+        if obj_type in self.domain.type_tree:
+            self.update_type_symbol_table(obj_name, self.domain.type_tree[obj_type].parent)
+
     def ground_object_list(self):
+        self.type_counts["object"] = len(self.problem.objects_type_map) + len(self.domain.constants_type_map)
         for type in self.domain.type_tree.keys():
             self.type_counts[type] = len(self.type_symbol_tables[type].symbol_list)
 
-    def ground_symbol_list(self, symbol_table : SymbolTable, formulae : Dict[str, AtomicFormula], heads : Dict[str, int]):
+    def ground_symbol_list(self, symbol_table : SymbolTable, formulae : dict[str, AtomicFormula], heads : dict[str, int]):
         head = 0
         for name in symbol_table.symbol_list:
             ground_formulae = 0
             for param in formulae[name].typed_parameters:
                 type = param.type
-                count = 0
-                if type in self.type_symbol_tables:
-                    count = len(self.type_symbol_tables[type].symbol_list)
+                count = len(self.type_symbol_tables[type].symbol_list) if type in self.type_symbol_tables else 0
                 if ground_formulae == 0:
                     ground_formulae = count
                 else:
                     ground_formulae = ground_formulae * count
                 # no objects can bind to this parameter so there are no ground symbols
                 if count==0: break
+            # special case for formula with no parameters
+            if len(formulae[name].typed_parameters)==0:
+                ground_formulae = 1
             heads[name] = (head, head + ground_formulae)
             self.last_symbol_count = head + ground_formulae
+            if name in self.statics and self.statics[name]:
+                self.static_offset = self.last_symbol_count
             head = head + ground_formulae
     
     #====================#
@@ -106,12 +160,15 @@ class Grounding:
         id += self.get_id_from_parameters(formula.typed_parameters)
         return id
 
-    def get_id_from_action(self, action : Operator) -> int:
-        id = self.operator_heads[action.formula.name][0]
-        id += self.get_id_from_parameters(action.formula.typed_parameters)
+    def get_id_from_action_formula(self, formula : AtomicFormula) -> int:
+        id = self.operator_heads[formula.name][0]
+        id += self.get_id_from_parameters(formula.typed_parameters)
         return id
 
-    def get_id_from_parameters(self, params : List[TypedParameter]) -> int:
+    def get_id_from_action(self, action : Operator) -> int:
+        return self.get_id_from_action_formula(action.formula)
+
+    def get_id_from_parameters(self, params : list[TypedParameter]) -> int:
         id = 0
         obj_count = 1
         for param in params[::-1]:
@@ -146,7 +203,7 @@ class Grounding:
                 op = self.domain.operators[name].bind_parameters(params)
                 return op
 
-    def get_parameters_from_id(self, id : int, params : List[TypedParameter]) -> List[TypedParameter]:
+    def get_parameters_from_id(self, id : int, params : list[TypedParameter]) -> list[TypedParameter]:
         ground_parameters = []
         for param in params:
             obj_count = self.type_counts[param.type]
@@ -156,6 +213,31 @@ class Grounding:
             ground_parameters.append(TypedParameter(param.type, param.label, value))
         return ground_parameters
 
+    #==================#
+    # statics analysis #
+    #==================#
+
+    def check_static_predicates(self):
+        self.statics = {p : True for p in self.domain.predicates.keys()}
+        for operator in self.domain.operators.values():
+            for p in self.statics.keys():
+                if self.check_effects_predicate(operator.effect, p):
+                    self.statics[p] = False
+    
+    def check_effects_predicate(self, effect : Effect, predicate : str) -> bool:
+        if effect.effect_type == EffectType.CONJUNCTION:
+            for e in effect.effects:
+                if self.check_effects_predicate(e, predicate):
+                    return True
+            return False
+        elif effect.effect_type == EffectType.FORALL or \
+             effect.effect_type == EffectType.CONDITIONAL or \
+             effect.effect_type == EffectType.TIMED:
+            return self.check_effects_predicate(effect.effect, predicate)
+        elif effect.effect_type == EffectType.SIMPLE or \
+             effect.effect_type == EffectType.NEGATIVE:
+            return predicate == effect.formula.name
+        return False   
 
     #===============#
     # spike methods #
@@ -168,7 +250,7 @@ class Grounding:
         if not self.grounded:
             return None
 
-        init_spike = np.zeros(self.proposition_count, dtype=np.bool)
+        init_spike = np.zeros(self.proposition_count, dtype=bool)
         init_spike[[ self.get_id_from_proposition(p) for p in self.problem.propositions ]] = True
         return init_spike
 
@@ -178,13 +260,13 @@ class Grounding:
         If not, it will create a new spike and cache it.
         return numpy array of propositional action conditions.
         """
-        if id in self.action_condition_spikes and id in self.action_negative_condition_spikes:
-            return self.action_condition_spikes[id], self.action_negative_condition_spikes[id]
+        if id in self.action_positive_condition_spikes[time_spec] and id in self.action_negative_condition_spikes[time_spec]:
+            return self.action_positive_condition_spikes[time_spec][id], self.action_negative_condition_spikes[time_spec][id]
         else:
             action = self.get_action_from_id(id)
             pos, neg = self.get_action_condition_spike(action, time_spec)
-            self.action_condition_spikes[id] = pos
-            self.action_negative_condition_spikes[id] = neg
+            self.action_positive_condition_spikes[time_spec][id] = pos
+            self.action_negative_condition_spikes[time_spec][id] = neg
             return pos, neg
 
     def get_action_condition_spike(self, action : Operator, time_spec : TimeSpec = TimeSpec.AT_START) -> tuple[np.ndarray]:
@@ -195,25 +277,28 @@ class Grounding:
         if not self.grounded:
             return None
 
-        positive_conditions = np.zeros(self.proposition_count, dtype=np.bool)
-        negative_conditions = np.zeros(self.proposition_count, dtype=np.bool)
+        positive_conditions = np.zeros(self.proposition_count, dtype=bool)
+        negative_conditions = np.zeros(self.proposition_count, dtype=bool)
         self.get_simple_conditions(action.condition, positive_conditions, negative_conditions, time_spec)
         return positive_conditions, negative_conditions
 
     def get_simple_conditions(self, condition : GoalDescriptor,
                                     positive_conditions : np.ndarray,
                                     negative_conditions : np.ndarray,
-                                    time_spec : TimeSpec = TimeSpec.AT_START) -> None:
+                                    time_spec : TimeSpec = TimeSpec.AT_START,
+                                    is_negative : bool = False) -> None:
         """
         Sets the values of the positive_conditions and negative_conditions arrays to True
         for each simple condition in the conditions.
         """
         if condition.goal_type == GoalType.SIMPLE:
             id = self.get_id_from_proposition(condition.atomic_formula)
-            positive_conditions[id] = True
+            if is_negative: 
+                negative_conditions[id] = True
+            else:
+                positive_conditions[id] = True
         elif condition.goal_type == GoalType.NEGATIVE:
-            id = self.get_id_from_proposition(condition.atomic_formula)
-            negative_conditions[id] = True
+            self.get_simple_conditions(condition.goal, positive_conditions, negative_conditions, time_spec, not is_negative)
         elif condition.goal_type == GoalType.CONJUNCTION:
             for c in condition.goals:
                 self.get_simple_conditions(c, positive_conditions, negative_conditions, time_spec)
@@ -230,13 +315,13 @@ class Grounding:
         If not, it will create a new spike and cache it.
         return numpy array of propositional action simple effects.
         """
-        if id in self.action_add_effect_spikes and id in self.action_del_effect_spikes:
-            return self.action_add_effect_spikes[id], self.action_del_effect_spikes[id]
+        if (id, time_spec) in self.action_add_effect_spikes and (id, time_spec) in self.action_del_effect_spikes:
+            return self.action_add_effect_spikes[(id, time_spec)], self.action_del_effect_spikes[(id, time_spec)]
         else:
             action = self.get_action_from_id(id)
             pos, neg = self.get_action_effect_spike(action, time_spec)
-            self.action_add_effect_spikes[id] = pos
-            self.action_del_effect_spikes[id] = neg
+            self.action_add_effect_spikes[(id, time_spec)] = pos
+            self.action_del_effect_spikes[(id, time_spec)] = neg
             return pos, neg
 
     def get_action_effect_spike(self, action : Operator, time_spec : TimeSpec = TimeSpec.AT_START) -> tuple[np.ndarray]:      
@@ -246,8 +331,8 @@ class Grounding:
         if not self.grounded:
             return None
 
-        positive_effects = np.zeros(self.proposition_count, dtype=np.bool)
-        negative_effects = np.zeros(self.proposition_count, dtype=np.bool)
+        positive_effects = np.zeros(self.proposition_count, dtype=bool)
+        negative_effects = np.zeros(self.proposition_count, dtype=bool)
         self.get_simple_effects(action.effect, positive_effects, negative_effects, time_spec)
         return positive_effects, negative_effects  
 
@@ -274,3 +359,42 @@ class Grounding:
         else:
             # forall, numeric, continuous, conditional, and empty
             return
+    
+    #===============#
+    # spike helpers #
+    #===============#
+
+    def check_simple_conditions(self, action_id : int, state : np.ndarray) -> bool:
+        """
+        Checks if the action's simple conditions are satisfied in the given state.
+        """
+        pos, neg = self.get_action_condition_spike_from_id(action_id)
+        # check positive preconditions
+        if np.any(np.logical_xor(pos, np.logical_and(state, pos))):
+            return False
+        # check negative preconditions
+        if np.any(np.logical_and(state, neg)):
+            return False
+        return True
+
+    def apply_simple_effects(self, action_id : int, state : np.ndarray) -> np.ndarray:
+        """
+        Apply the propositional effects of the action to the state, returning the new state.
+        """
+        adds, dels = self.get_action_effect_spike_from_id(action_id)
+        new_state = np.logical_xor(state, np.logical_and(state, dels))
+        return np.logical_or(new_state, adds)
+
+    def simple_goal_achieved(self, state : np.ndarray) -> bool:
+        """
+        Checks if the simple goal true in the state.
+        """
+        positive_conditions = np.zeros(self.proposition_count, dtype=bool)
+        negative_conditions = np.zeros(self.proposition_count, dtype=bool)
+        self.get_simple_conditions(self.problem.goal, positive_conditions, negative_conditions)
+        for id in np.nonzero(positive_conditions)[0]:
+            if not state[id]: return False
+        for id in np.nonzero(negative_conditions)[0]:
+            if state[id]: return False
+        return True
+        # return not np.any(np.logical_xor(positive_conditions, np.logical_and(positive_conditions, state)))

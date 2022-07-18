@@ -1,7 +1,10 @@
-from pddl.duration import Duration
+from pddl.duration import Duration, DurationInequality
 from pddl.atomic_formula import AtomicFormula, TypedParameter
-from pddl.effect import Effect
-from pddl.goal_descriptor import GoalDescriptor
+from pddl.effect import Effect, EffectConjunction, EffectNegative, EffectSimple, EffectType, TimedEffect
+from pddl.expression import ExprBase, ExprComposite
+from pddl.goal_descriptor import GoalConjunction, GoalDescriptor, GoalSimple, GoalType, TimedGoal
+from pddl.goal_descriptor_inequality import Inequality
+from pddl.time_spec import TimeSpec
 
 
 class Operator:
@@ -13,15 +16,90 @@ class Operator:
             # header
             formula  : AtomicFormula,
             durative : bool,
-            duration : Duration = Duration(),
-            condition : GoalDescriptor = GoalDescriptor(),
-            effect : Effect = Effect(),
+            duration : Duration = None,
+            condition : GoalDescriptor = None,
+            effect : Effect = None,
             ) -> None:
-        self.formula = formula
-        self.durative = durative
-        self.duration = duration
-        self.condition = condition
-        self.effect = effect
+        self.formula : AtomicFormula = formula
+        self.durative : bool = durative
+        self.duration : Duration = duration if duration else Duration()
+        self.condition : GoalDescriptor = condition if condition else GoalDescriptor()
+        self.effect : Effect = effect if effect else Effect()
+
+    # ======= #
+    # Setters #
+    # ======= #
+
+    def set_constant_duration(self, duration : float):
+        lhs = ExprComposite([ExprBase(expr_type=ExprBase.ExprType.SPECIAL, special_type=ExprBase.SpecialType.DURATION)])
+        rhs = ExprComposite([ExprBase(expr_type=ExprBase.ExprType.CONSTANT, constant=duration)])
+        self.duration = DurationInequality(Inequality(comparison_type=Inequality.ComparisonType.EQUALS, lhs=lhs, rhs=rhs))
+
+    def add_simple_condition_from_str(self, name : str,
+                                            parameters : dict[str,str] = {},
+                                            constants : dict[str,str] = {}, 
+                                            time_spec : TimeSpec = TimeSpec.AT_START
+                                            ):
+        """
+        Adds a propositional condition from string using AtomicFormula.from_string()
+        param name: the name of the predicate to add.
+        param parameters: dictionary mapping label to type.
+        param constants: dictionary mapping label to constant value.
+        param time_spec: timing of condition, if durative action.
+        """
+        self.add_simple_condition(AtomicFormula.from_string(name, parameters, constants), time_spec)
+
+    def add_simple_condition(self, predicate : AtomicFormula, time_spec : TimeSpec = TimeSpec.AT_START):
+        """
+        Adds a propositional condition.
+        If the operator already has a non-conjunctive condition then the new and existing
+        conditions will be wrapped together within a new conjunctive condition.
+        """
+        condition = GoalSimple(predicate)
+        if self.durative: condition = TimedGoal(time_spec, condition)
+        if self.condition.goal_type == GoalType.CONJUNCTION:
+            self.condition : GoalConjunction
+            self.condition.goals.append(condition)
+        elif self.condition.goal_type == GoalType.EMPTY:
+            self.condition = condition
+        else:
+            self.condition = GoalConjunction(goals=[self.condition, condition])
+
+    def add_simple_effect_from_str(self, name : str,
+                                        parameters : dict[str,str] = {},
+                                        constants : dict[str,str] = {}, 
+                                        time_spec : TimeSpec = TimeSpec.AT_START,
+                                        is_delete : bool = False
+                                        ):
+        """
+        Adds a propositional effect from string using AtomicFormula.from_string()
+        param name: the name of the predicate to add.
+        param parameters: dictionary mapping label to type.
+        param constants: dictionary mapping label to constant value.
+        param time_spec: timing of effect, if durative action.
+        param is_delete: True if the effect is a delete effect.
+        """
+        self.add_simple_effect(AtomicFormula.from_string(name, parameters, constants), time_spec, is_delete)
+
+    def add_simple_effect(self, predicate : AtomicFormula, time_spec : TimeSpec = TimeSpec.AT_START, is_delete : bool = False):
+        """
+        Adds a propositional effect.
+        If the operator already has a non-conjunctive effect then the new and existing
+        effects will be wrapped together within a new conjunctive effect.
+        """
+        effect = EffectNegative(predicate) if is_delete else EffectSimple(predicate)
+        if self.durative: effect = TimedEffect(time_spec, effect)
+        if self.effect.effect_type == EffectType.CONJUNCTION:
+            self.effect : EffectConjunction
+            self.effect.effects.append(effect)
+        elif self.effect.effect_type == EffectType.EMPTY:
+            self.effect = effect
+        else:
+            self.effect = EffectConjunction(effects=[self.effect, effect])
+
+    # ======== #
+    # Printing #
+    # ======== #
 
     def __str__(self) -> str:
         # TODO checking for empty parameters and conditions
@@ -38,9 +116,14 @@ class Operator:
     def print_pddl(self) -> str:
         return self.formula.print_pddl(include_types=False)
 
+    # ========= #
+    # Grounding #
+    # ========= #
+    
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Operator':
         """
-        Binds the parameters of a copy of the operator to the given list of parameters.
+        parameters: list of TypedParameter whose type and label must match the type and label of the operator.
+        returns a copy of the operator whose conditions and effects have been grounded with the given values.
         """
         return Operator(
             self.formula.bind_parameters(parameters),

@@ -4,6 +4,11 @@ from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.goal_descriptor_inequality import Inequality
 from pddl.time_spec import TimeSpec
 
+class DurationType(Enum):
+    EMPTY       = "unconstrained"
+    CONJUNCTION = "conjunction"
+    INEQUALITY  = "inequality"
+    TIMED       = "timed"
 
 class Duration:
     """
@@ -14,12 +19,6 @@ class Duration:
     - inequality (comparison_op ?duration expression)
     - timed inequality (at end (comparison_op ?duration expression))
     """
-
-    class DurationType(Enum):
-        EMPTY       = "unconstrained"
-        CONJUNCTION = "conjunction"
-        INEQUALITY  = "inequality"
-        TIMED       = "timed"
 
     def __init__(self, duration_type : DurationType = DurationType.EMPTY) -> None:
         self.duration_type = duration_type
@@ -39,7 +38,7 @@ class DurationInequality(Duration):
     Duration such as (comparison_op ?duration expression)
     """
     def __init__(self, inequality : Inequality) -> None:
-        super().__init__(Duration.DurationType.INEQUALITY)
+        super().__init__(DurationType.INEQUALITY)
         self.ineq = inequality
 
     def __repr__(self) -> str:
@@ -54,7 +53,7 @@ class DurationTimed(Duration):
     """
 
     def __init__(self, time_spec : TimeSpec, inequality : Inequality) -> None:
-        super().__init__(Duration.DurationType.TIMED)
+        super().__init__(DurationType.TIMED)
         self.time_spec = time_spec
         self.ineq = inequality
 
@@ -69,7 +68,7 @@ class DurationConjunction(Duration):
     Duration such as (and duration_constraint duration_constraint ...)
     """
     def __init__(self, constraints : List[Union[DurationInequality,DurationTimed]] = []) -> None:
-        super().__init__(Duration.DurationType.CONJUNCTION)
+        super().__init__(DurationType.CONJUNCTION)
         self.constraints = constraints
 
     def __repr__(self) -> str:
