@@ -3,7 +3,7 @@ import sys
 import time
 from pddl.grounding import Grounding
 from plan_graphs.relaxed_plan_graph import RelaxedPlanGraph
-from pddl.parse_visitor import Parser
+from pddl.parser import Parser
 
 if __name__ == "__main__":
     """
@@ -29,7 +29,7 @@ if __name__ == "__main__":
         pddl_parser.parse_file(file)
     print("Parsing PDDL files took %.2f seconds." % (time.time() - start_time))
 
-    # after parsing, prepare the grounded representation
+    # after parsing, prepare a grounded representation
     print("Preparing grounded representation...")
     start_time = time.time()
     grounding = Grounding()
@@ -40,6 +40,13 @@ if __name__ == "__main__":
     print("Building relaxed plan graph...")
     start_time = time.time()
     rpg = RelaxedPlanGraph(pddl_parser.domain, pddl_parser.problem, grounding)
-    rpg.build_graph(stop_at_goal=True)
+    layer_count = rpg.build_graph(stop_at_goal=True)
     print("Building relaxed plan graph took %.2f seconds." % (time.time() - start_time))
-    print("Relaxed plan graph has %d layers." % len(rpg.fact_layers))
+    print("Relaxed plan graph has %d layers." % layer_count)
+
+    # extract and print the relaxed plan
+    print("Relaxed Plan:")
+    plan, layer_count = rpg.get_relaxed_plan()
+    for layer, actions in plan.items():
+        for action_id in actions:
+            print("%d: %s" % (layer, grounding.get_action_from_id(action_id).print_pddl()))

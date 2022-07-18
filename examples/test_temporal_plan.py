@@ -1,5 +1,5 @@
 import argparse
-from pddl.parse_visitor import Parser
+from pddl.parser import Parser
 from pddl.grounding import Grounding
 from plans.temporal_plan import PlanTemporalNetwork
 
@@ -31,8 +31,6 @@ if __name__ == "__main__":
     plan = PlanTemporalNetwork(pddl_parser.domain, pddl_parser.problem, grounding)
     plan.read_from_file(args.plan)
 
-    print(plan.temporal_network.floyd_warshall())
-    plan.temporal_network.print_dot_graph()
-
+    print("Plan is temporally consistent:", plan.temporal_network.floyd_warshall())
     plan.temporal_network.make_minimal()
     plan.temporal_network.print_dot_graph()

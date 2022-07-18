@@ -14,10 +14,9 @@ class PlanSequential:
     Represents a plan as a list of STRIPS actions.
     """
 
-    def __init__(self, domain : Domain, problem : Problem, grounding : Grounding):
+    def __init__(self, domain : Domain, problem : Problem):
         self.domain : Domain = domain
         self.problem : Problem = problem
-        self.grounding : Grounding = grounding
         self.action_list : list[Operator] = []
 
     def read_from_file(self, plan_file):
@@ -55,18 +54,21 @@ class PlanSequential:
     #============#
 
     def check_plan(self, print_results=False) -> bool:
-        state = self.grounding.get_initial_state_spike()
+
+        grounding = Grounding()
+        grounding.ground_problem(self.domain, self.problem)
+        state = grounding.get_initial_state_spike()
 
         # check if the plan is executable
         for action in self.action_list:
 
-            pos, neg = self.grounding.get_action_condition_spike(action)
+            pos, neg = grounding.get_action_condition_spike(action)
             result = np.logical_xor(pos, np.logical_and(pos, state))
             if np.any(result):
                 if print_results:
                     print("Action " + str(action.formula) + " is not applicable.")
                     for index in np.nonzero(result)[0]:
-                        print("Positive condition is not met: " + str(self.grounding.get_proposition_from_id(index)))
+                        print("Positive condition is not met: " + str(grounding.get_proposition_from_id(index)))
                 return False
 
             result = np.logical_xor(neg, np.logical_and(neg, np.logical_not(state)))
@@ -74,11 +76,11 @@ class PlanSequential:
                 if print_results:
                     print("Action " + str(action.formula) + " is not applicable.")        
                     for index in np.nonzero(result)[0]:
-                        print("Negative condition is not met: " + str(self.grounding.get_proposition_from_id(index)))
+                        print("Negative condition is not met: " + str(grounding.get_proposition_from_id(index)))
                 return False
 
             # apply action effects
-            adds, dels = self.grounding.get_action_effect_spike(action)
+            adds, dels = grounding.get_action_effect_spike(action)
             np.logical_xor(np.logical_and(state, dels), state, out=state)
             np.logical_or(state, adds, out=state)
 
@@ -86,9 +88,9 @@ class PlanSequential:
             print("Plan is executable.")
 
         # check if goal is satisfied
-        positive_conditions = np.zeros(self.grounding.proposition_count, dtype=bool)
-        negative_conditions = np.zeros(self.grounding.proposition_count, dtype=bool)
-        self.grounding.get_simple_conditions(self.problem.goal, positive_conditions, negative_conditions)
+        positive_conditions = np.zeros(grounding.proposition_count, dtype=bool)
+        negative_conditions = np.zeros(grounding.proposition_count, dtype=bool)
+        grounding.get_simple_conditions(self.problem.goal, positive_conditions, negative_conditions)
         
         # positive goals
         goal_achieved = True
@@ -97,7 +99,7 @@ class PlanSequential:
             if print_results:
                 print("Goal is not satisfied.")
                 for index in np.nonzero(result)[0]:
-                    print("Positive goal is not met: " + str(self.grounding.get_proposition_from_id(index)))
+                    print("Positive goal is not met: " + str(grounding.get_proposition_from_id(index)))
             goal_achieved = False
 
         # negative goals
@@ -106,7 +108,7 @@ class PlanSequential:
             if print_results:
                 print("Goal is not satisfied.")
                 for index in np.nonzero(result)[0]:
-                    print("Negative goal is not met: " + str(self.grounding.get_proposition_from_id(index)))
+                    print("Negative goal is not met: " + str(grounding.get_proposition_from_id(index)))
             goal_achieved = False
 
         if goal_achieved and print_results:
