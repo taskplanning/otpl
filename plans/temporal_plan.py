@@ -32,9 +32,14 @@ class PlanTemporalNetwork:
     Represents the plan as a temporal network.
     """
 
-    def __init__(self, domain : Domain, problem : Problem, grounding : Grounding):
+    def __init__(self, domain : Domain, problem : Problem, grounding : Grounding = None):
         self.domain : Domain = domain
         self.problem : Problem = problem
+
+        if grounding is None:
+            grounding = Grounding()
+            grounding.ground_problem(domain, problem)
+
         self.grounding : Grounding = grounding
 
         self.epsilon = 0.01

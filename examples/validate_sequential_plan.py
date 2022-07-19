@@ -1,11 +1,15 @@
 import argparse
+import sys
+import time
 from pddl.parser import Parser
 from pddl.grounding import Grounding
-from plans.temporal_plan import PlanTemporalNetwork
+from pddl.domain import Domain
+from pddl.problem import Problem
+from plans.sequential_plan import PlanSequential
 
 if __name__ == "__main__":
     """
-    This script uses the SequentialPlan class.
+    This script uses the PlanSequential class.
     First it parses the PDDL domain and problem files.
     Then it loads the plan from file and checks if the plan is valid.
     Finally, it prints the details of the first few actions in the plan.
@@ -23,14 +27,16 @@ if __name__ == "__main__":
     pddl_parser = Parser()
     pddl_parser.parse_file(args.domain)
     pddl_parser.parse_file(args.problem)
-
-    grounding = Grounding()
-    grounding.ground_problem(pddl_parser.domain, pddl_parser.problem)
     
     print("Parsing PDDL plan file...")
-    plan = PlanTemporalNetwork(pddl_parser.domain, pddl_parser.problem, grounding)
+    plan = PlanSequential(pddl_parser.domain, pddl_parser.problem)
     plan.read_from_file(args.plan)
 
-    print("Plan is temporally consistent:", plan.temporal_network.floyd_warshall())
-    plan.temporal_network.make_minimal()
-    plan.temporal_network.print_dot_graph()
+    # checking plan vailidity and printing results to screen
+    plan.check_plan(print_results=True)
+
+    # printing the plan's actions
+    print("Plan actions:")
+    for action in plan.action_list[0:2]:
+        print(action)
+    print("...")
