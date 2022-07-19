@@ -14,7 +14,6 @@ class AtomicFormula:
     def __init__(self, name : str, typed_parameters : List[TypedParameter] = None, grounded : bool = False) -> None:
         self.name = name
         self.typed_parameters : list[TypedParameter] = typed_parameters if typed_parameters else []
-        self.function_value = 0.0
 
     def from_string(name : str, parameters : dict[str,str] = {}, values : dict[str,str] = {}) -> 'AtomicFormula':
         """

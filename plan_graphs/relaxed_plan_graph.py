@@ -5,11 +5,16 @@ from pddl.problem import Problem
 
 class RelaxedPlanGraph:
 
-    def __init__(self, domain : Domain, problem : Problem, grounding : Grounding) -> None:
+    def __init__(self, domain : Domain, problem : Problem, grounding : Grounding = None) -> None:
 
         self.domain    : Domain = domain
         self.problem   : Problem = problem
-        self.grounding : Grounding= grounding
+
+        if grounding is None:
+            grounding = Grounding()
+            grounding.ground_problem(domain, problem)
+        
+        self.grounding : Grounding = grounding
 
         # plan graph details
         self.last_layer = 0
@@ -160,10 +165,9 @@ class RelaxedPlanGraph:
             for act in acts:
                 print ("\t{}".format(self.grounding.get_action_from_id(act).print_pddl()))
 
-    def get_relaxed_plan(self) -> None:
+    def get_relaxed_plan(self) -> tuple[dict[list[int]],int]:
         """
-        If the goal has been reached returns the relaxed plan.
-        Otherwise returns None.
+        If the goal has been reached returns a tuple containing the relaxed plan and the number of actions in the plan.
         """
         if not self.goal_reached:
             return None
@@ -199,3 +203,11 @@ class RelaxedPlanGraph:
                         break
         return relaxed_plan, action_count
 
+    def print_relaxed_plan(self) -> None:
+        """
+        Prints the relaxed plan as a list of "layer: action".
+        """
+        plan, _ = self.get_relaxed_plan()
+        for layer, actions in plan.items():
+            for action_id in actions:
+                print("%d: %s" % (layer, self.grounding.get_action_from_id(action_id).print_pddl()))

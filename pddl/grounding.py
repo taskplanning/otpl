@@ -1,5 +1,4 @@
 import numpy as np
-from pddl import effect
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.domain import Domain
 from pddl.effect import Effect, EffectType
@@ -8,6 +7,7 @@ from pddl.operator import Operator
 from pddl.problem import Problem
 from pddl.symbol_table import SymbolTable
 from pddl.time_spec import TimeSpec
+from pddl.timed_initial_literal import TimedInitialLiteral
 
 class Grounding:
 
@@ -221,19 +221,19 @@ class Grounding:
         self.statics = {p : True for p in self.domain.predicates.keys()}
         for operator in self.domain.operators.values():
             for p in self.statics.keys():
-                if self.check_effects_predicate(operator.effect, p):
+                if self.effect_affects_predicate(operator.effect, p):
                     self.statics[p] = False
     
-    def check_effects_predicate(self, effect : Effect, predicate : str) -> bool:
+    def effect_affects_predicate(self, effect : Effect, predicate : str) -> bool:
         if effect.effect_type == EffectType.CONJUNCTION:
             for e in effect.effects:
-                if self.check_effects_predicate(e, predicate):
+                if self.effect_affects_predicate(e, predicate):
                     return True
             return False
         elif effect.effect_type == EffectType.FORALL or \
              effect.effect_type == EffectType.CONDITIONAL or \
              effect.effect_type == EffectType.TIMED:
-            return self.check_effects_predicate(effect.effect, predicate)
+            return self.effect_affects_predicate(effect.effect, predicate)
         elif effect.effect_type == EffectType.SIMPLE or \
              effect.effect_type == EffectType.NEGATIVE:
             return predicate == effect.formula.name
@@ -335,6 +335,18 @@ class Grounding:
         negative_effects = np.zeros(self.proposition_count, dtype=bool)
         self.get_simple_effects(action.effect, positive_effects, negative_effects, time_spec)
         return positive_effects, negative_effects  
+
+    def get_til_effect_spike(self, til : TimedInitialLiteral) -> tuple[np.ndarray]:      
+        """
+        return tuple of numpy arrays, one adding and one deleting propositional effect.
+        """
+        if not self.grounded:
+            return None
+
+        positive_effects = np.zeros(self.proposition_count, dtype=bool)
+        negative_effects = np.zeros(self.proposition_count, dtype=bool)
+        self.get_simple_effects(til.effect, positive_effects, negative_effects)
+        return positive_effects, negative_effects
 
     def get_simple_effects(self, effect : Effect,
                                 positive_effects : np.ndarray,

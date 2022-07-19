@@ -1,6 +1,5 @@
 from queue import PriorityQueue
 
-
 class TemporalNetwork:
     """
     represents a simple temporal network as a graph.
@@ -78,6 +77,10 @@ class TemporalNetwork:
         removes redundant edges from the network, assuming that the
         network is temporally consistent and already in all-pairs
         shortest path form.
+        Reference:
+        Nicola Muscettola, Paul Morris, and Ioannis Tsamardinos;
+        "Reformulating Temporal Plans For Efficient Execution";
+        In Principles of Knowledge Representation and Reasoning (1998).
         """
         for k in self.nodes:
             for i in self.nodes:
