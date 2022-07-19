@@ -1,5 +1,5 @@
-from typing import Dict, List
 from pddl.domain import Domain
+from pddl.effect import EffectNegative, EffectSimple
 from pddl.goal_descriptor import GoalConjunction, GoalDescriptor, GoalSimple, GoalType
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.metric import Metric
@@ -18,14 +18,15 @@ class Problem:
         self.problem_name = problem_name
         self.domain_name = domain.domain_name
         self.domain = domain
-        self.requirements : List[str] = []
-        self.objects_type_map : Dict[str,str] = {}
-        self.type_objects_map : Dict[str,List[str]] = {}
-        self.propositions : List[AtomicFormula] = []
-        self.functions : List[AtomicFormula] = []
-        self.timed_initial_literals : List[TimedInitialLiteral] = []
+        self.requirements : list[str] = []
+        self.objects_type_map : dict[str,str] = {}
+        self.type_objects_map : dict[str,list[str]] = {}
+        self.propositions : list[AtomicFormula] = []
+        self.functions : list[tuple[float,AtomicFormula]] = []
+        self.timed_initial_literals : list[TimedInitialLiteral] = []
         self.goal : GoalDescriptor = None
         self.metric : Metric = None
+        self.current_time = 0.0
 
     # ======= #
     # Setters #
@@ -44,42 +45,107 @@ class Problem:
         self.objects_type_map[name] = type
         self.type_objects_map[type].append(name)
 
-    def add_proposition_from_str(self, name : str, values : list[str] = []):
+    def add_proposition_from_str(self, predicate_name : str, params : list[str] = []):
         """
-        Adds a new predicate to the domain using AtomicFormula.from_string()
-        param name: the name of the predicate to add.
-        param values: list of parameter values.
+        Adds a new proposition to the initial state using AtomicFormula.from_string()
+        param name: the name of the proposition to add.
+        param params: list of parameter values.
         """
-        if name not in self.domain.predicates:
-            raise Exception("Predicate {.s} does not exist.".format(name))
-        if len(self.domain.predicates[name].typed_parameters) != len(values):
-            raise Exception("Proposition {.s} has wrong number of parameters.".format(name))
-        params = []
-        for param, value in zip(self.domain.predicates[name].typed_parameters, values):
-            params.append(TypedParameter(param.type, param.label,value))
-        self.add_proposition(AtomicFormula(name, params))
+        if predicate_name not in self.domain.predicates:
+            raise Exception("Predicate {.s} does not exist.".format(predicate_name))
+        if len(self.domain.predicates[predicate_name].typed_parameters) != len(params):
+            raise Exception("Proposition {.s} has wrong number of parameters.".format(predicate_name))
+        typed_params = []
+        for param, value in zip(self.domain.predicates[predicate_name].typed_parameters, params):
+            typed_params.append(TypedParameter(param.type, param.label,value))
+        self.add_proposition(AtomicFormula(predicate_name, typed_params))
 
     def add_proposition(self, proposition : AtomicFormula):
         """
         Adds a new proposition to the initial state.
         param propition: the new proposition to add.
         """
+        for prop in self.propositions:
+            if prop.name != proposition.name: continue
+            if len(prop.typed_parameters) != len(proposition.typed_parameters): continue
+            match = True
+            for param1, param2 in zip(prop.typed_parameters, proposition.typed_parameters):
+                if param1.value != param2.value:
+                    match = False
+                    break
+            if match: return
         self.propositions.append(proposition)
 
-    def add_simple_goal_from_str(self, name : str, values : list[str] = []):
+    def add_til_from_str(self, time : float, predicate_name : str, params : list[str] = [], negative : bool = False):
+        """
+        Adds a new TIL to the problem using AtomicFormula.from_string()
+        param time: the time at which the TIL should occur.
+        param name: the name of the timed proposition.
+        param params: list of parameter values.
+        param negative: True if the TIL is negative.
+        """
+        if predicate_name not in self.domain.predicates:
+            raise Exception("Predicate {.s} does not exist.".format(predicate_name))
+        if len(self.domain.predicates[predicate_name].typed_parameters) != len(params):
+            raise Exception("Proposition {.s} has wrong number of parameters.".format(predicate_name))
+        typed_params = []
+        for param, value in zip(self.domain.predicates[predicate_name].typed_parameters, params):
+            typed_params.append(TypedParameter(param.type, param.label,value))
+        formula = AtomicFormula(predicate_name, typed_params)
+        effect = EffectNegative(formula) if negative else EffectSimple(formula)
+        self.timed_initial_literals.append(TimedInitialLiteral(time, effect))
+
+    def add_til(self, timed_initial_literal : TimedInitialLiteral):
+        """
+        Adds a timed initial literal to the initial state.
+        """
+        self.timed_initial_literals.append(timed_initial_literal)
+
+    def add_assignment_from_str(self, value : float, function_name : str, params : list[str] = []):
+        """
+        Adds a new function assignment to the initial state using AtomicFormula.from_string()
+        param value: the value to be assigned.
+        param name: the name of the function to add.
+        param params: list of parameter values.
+        """
+        if function_name not in self.domain.functions:
+            raise Exception("Function {.s} does not exist.".format(function_name))
+        if len(self.domain.functions[function_name].typed_parameters) != len(params):
+            raise Exception("Function {.s} has wrong number of parameters.".format(function_name))
+        typed_params = []
+        for param, value in zip(self.domain.functions[function_name].typed_parameters, params):
+            typed_params.append(TypedParameter(param.type, param.label,value))
+        self.add_assignment(value, AtomicFormula(function_name, typed_params))
+
+    def add_assignment(self, value : float, function : AtomicFormula):
+        """
+        Adds a function assignment to the initial state.
+        """
+        for val, func in self.functions:
+            if func.name != function.name: continue
+            if len(func.typed_parameters) != len(function.typed_parameters): continue
+            match = True
+            for param1, param2 in zip(func.typed_parameters, function.typed_parameters):
+                if param1.value != param2.value:
+                    match = False
+                    break
+            if match: return
+        self.functions.append((value,function))
+
+    def add_simple_goal_from_str(self, predicate_name : str, params : list[str] = []):
         """
         Adds a propositional goal from string using AtomicFormula.from_string()
         param name: the name of the predicate to add.
         param values: list of parameter values.
         """
-        if name not in self.domain.predicates:
-            raise Exception("Predicate {.s} does not exist.".format(name))
-        if len(self.domain.predicates[name].typed_parameters) != len(values):
-            raise Exception("Proposition {.s} has wrong number of parameters.".format(name))
-        params = []
-        for param, value in zip(self.domain.predicates[name].typed_parameters, values):
-            params.append(TypedParameter(param.type, param.label,value))
-        self.add_simple_goal(AtomicFormula(name, params))
+        if predicate_name not in self.domain.predicates:
+            raise Exception("Predicate {.s} does not exist.".format(predicate_name))
+        if len(self.domain.predicates[predicate_name].typed_parameters) != len(params):
+            raise Exception("Proposition {.s} has wrong number of parameters.".format(predicate_name))
+        typed_params = []
+        for param, value in zip(self.domain.predicates[predicate_name].typed_parameters, params):
+            typed_params.append(TypedParameter(param.type, param.label,value))
+        self.add_simple_goal(AtomicFormula(predicate_name, typed_params))
 
     def add_simple_goal(self, predicate : AtomicFormula):
         """
@@ -122,7 +188,7 @@ class Problem:
         for pred in self.propositions:
             return_string += "  " + pred.print_pddl() + "\n"
         for func in self.functions:
-            return_string += "  (= " + func.print_pddl() + " " + str(func.function_value) + ")\n"
+            return_string += "  (= " + func[1].print_pddl() + " " + str(func[0]) + ")\n"
         for til in self.timed_initial_literals:
             return_string += "  " + repr(til) + "\n"
         return_string += ")\n"

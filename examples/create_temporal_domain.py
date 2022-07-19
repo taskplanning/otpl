@@ -1,4 +1,5 @@
 from pddl.domain import Domain
+from pddl.effect_assignment import AssignmentType
 from pddl.problem import Problem
 from pddl.grounding import Grounding
 from pddl.time_spec import TimeSpec
@@ -18,6 +19,9 @@ def create_temporal_domain() -> Domain:
     domain.add_predicate_from_str("mended", {"?f" : "fuse"})
     domain.add_predicate_from_str("handempty")
 
+    # functions
+    domain.add_function_from_str("fuses_mended")
+
     # light match
     domain.add_operator_from_str("light_match", {"?m" : "match"}, durative=True)
     op = domain.operators['light_match']
@@ -36,6 +40,7 @@ def create_temporal_domain() -> Domain:
     op.add_simple_effect_from_str("handempty", is_delete=True)
     op.add_simple_effect_from_str("mended", {"?f" : "fuse"}, time_spec=TimeSpec.AT_END)
     op.add_simple_effect_from_str("handempty", time_spec=TimeSpec.AT_END)
+    op.add_assign_effect_from_str("fuses_mended", time_spec=TimeSpec.AT_END, assign_type=AssignmentType.INCREASE, value=1.0)
 
     return domain
 

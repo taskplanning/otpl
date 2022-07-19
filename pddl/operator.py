@@ -1,6 +1,8 @@
+from pddl import effect_assignment
 from pddl.duration import Duration, DurationInequality
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.effect import Effect, EffectConjunction, EffectNegative, EffectSimple, EffectType, TimedEffect
+from pddl.effect_assignment import Assignment, AssignmentType
 from pddl.expression import ExprBase, ExprComposite
 from pddl.goal_descriptor import GoalConjunction, GoalDescriptor, GoalSimple, GoalType, TimedGoal
 from pddl.goal_descriptor_inequality import Inequality
@@ -88,6 +90,44 @@ class Operator:
         effects will be wrapped together within a new conjunctive effect.
         """
         effect = EffectNegative(predicate) if is_delete else EffectSimple(predicate)
+        if self.durative: effect = TimedEffect(time_spec, effect)
+        if self.effect.effect_type == EffectType.CONJUNCTION:
+            self.effect : EffectConjunction
+            self.effect.effects.append(effect)
+        elif self.effect.effect_type == EffectType.EMPTY:
+            self.effect = effect
+        else:
+            self.effect = EffectConjunction(effects=[self.effect, effect])
+
+    def add_assign_effect_from_str(self, name : str,
+                                        parameters : dict[str,str] = {},
+                                        constants : dict[str,str] = {}, 
+                                        time_spec : TimeSpec = TimeSpec.AT_START,
+                                        assign_type : AssignmentType = AssignmentType.ASSIGN,
+                                        value : float = 1.0
+                                        ):
+        """
+        Adds a numeric effect from string using AtomicFormula.from_string()
+        param name: the name of the predicate to add.
+        param parameters: dictionary mapping label to type.
+        param constants: dictionary mapping label to constant value.
+        param time_spec: timing of effect, if durative action.
+        param assign_type: the type of numeric assignment (assign, increase, decrease, etc)
+        param value: The amount to be applied.
+        """
+        self.add_assign_effect(AtomicFormula.from_string(name, parameters, constants), time_spec, assign_type, value)
+
+    def add_assign_effect(self, function : AtomicFormula,
+                                time_spec : TimeSpec = TimeSpec.AT_START,
+                                assign_type : AssignmentType = AssignmentType.ASSIGN,
+                                value : float = 1.0):
+        """
+        Adds a numeric effect.
+        If the operator already has a non-conjunctive effect then the new and existing
+        effects will be wrapped together within a new conjunctive effect.
+        """
+        value_expr = ExprComposite([ExprBase(expr_type=ExprBase.ExprType.CONSTANT, constant=value)])
+        effect = Assignment(assign_type, function, value_expr)
         if self.durative: effect = TimedEffect(time_spec, effect)
         if self.effect.effect_type == EffectType.CONJUNCTION:
             self.effect : EffectConjunction
