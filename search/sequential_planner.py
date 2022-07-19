@@ -34,13 +34,24 @@ class PriorityState:
     def __eq__(self, other):
         return self.hval == other.hval
 
-class Planner(): 
-        
+class Planner():
+    """
+    This class defines a simple planner that can be used as the basis for some experimentation.
+    """
+
     def __init__(self):
         self.domain = None
         self.problem = None
 
     def find_sequential_plan(self, domain : Domain, problem : Problem, optimal : bool = False, verbosity : int = 1) -> PlanSequential:
+        """
+        Searches for a sequential plan in the given a propositional domain and problem.
+        By default the search algorithm is best first search.
+        If optimal is True, the search algorithm is A* instead of best first.
+        The number of actions in the relaxed plan is the heuristic. 
+        The search uses lazy evaluation, i.e. heuristic values are only computed for nodes when they are selected from the priority queue.
+        Only helpful actions are considered when expanding a node!
+        """
 
         self.domain = domain
         self.problem = problem
@@ -116,29 +127,18 @@ class Planner():
 
 if __name__ == "__main__":
     
-    # ground command line arguments
+    # command line arguments
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("pddl_file", help="PDDL domain file, problem file (2 files)", nargs=2)
+    arg_parser.add_argument("domain", help="path to PDDL domain file")
+    arg_parser.add_argument("problem", help="path to PDDL problem file")
     args = arg_parser.parse_args()
-
-    if len(args.pddl_file) != 2: 
-        arg_parser.print_help()
-        sys.exit(0)
     
     # parse PDDL domain and problem files
     pddl_parser = Parser()
-    print("Parsing PDDL domain file...")
-    start_time = time.time()
-    for file in args.pddl_file:
-        pddl_parser.parse_file(file)
-    print("Parsing PDDL files took %.2f seconds." % (time.time() - start_time))
+    pddl_parser.parse_file(args.domain)
+    pddl_parser.parse_file(args.problem)
 
     # find sequential plan
-    print("Finding sequential plan...")
-    start_time = time.time()
     planner = Planner()
     plan = planner.find_sequential_plan(pddl_parser.domain, pddl_parser.problem, verbosity=0)
-    print("Finding sequential plan took %.2f seconds." % (time.time() - start_time))
-    
     plan.print_plan()
-    print("Plan valid:", plan.check_plan())
