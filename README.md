@@ -1,6 +1,6 @@
 # Open Task Planning Library (OTPL)
 
-This library consists of Python modules that can be used to support PDDL planning related projects. The code supports all features of temporal PDDL 2.2. 
+This library consists of Python modules that can be used to support PDDL-related projects. The code supports all features of temporal PDDL 2.2. 
 
 Current modules include:
 - PDDL2.2 parser and data structures.
