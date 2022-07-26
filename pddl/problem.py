@@ -190,7 +190,7 @@ class Problem:
             self.goal = GoalConjunction(goals=[self.goal, condition])
 
     # ======== #
-    # Printing #
+    # printing #
     # ======== #
 
     def __str__(self) -> str:

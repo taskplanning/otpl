@@ -15,7 +15,6 @@ class Operator:
     """
 
     def __init__(self,
-            # header
             formula  : AtomicFormula,
             durative : bool,
             duration : Duration = None,
@@ -154,7 +153,7 @@ class Operator:
             self.effect = EffectConjunction(effects=[self.effect, effect])
 
     # ======== #
-    # Printing #
+    # printing #
     # ======== #
 
     def __str__(self) -> str:
@@ -173,7 +172,7 @@ class Operator:
         return self.formula.print_pddl(include_types=False)
 
     # ========= #
-    # Grounding #
+    # grounding #
     # ========= #
     
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Operator':

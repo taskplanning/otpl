@@ -143,7 +143,7 @@ class Domain:
 
 
     # =================== #
-    # Queries and utility #
+    # queries and utility #
     # =================== #
 
 
@@ -158,7 +158,7 @@ class Domain:
         return self.is_sub_type(self.type_tree[type].parent, parent)
         
     # ======== #
-    # Printing #
+    # printing #
     # ======== #
 
     def __str__(self) -> str:
