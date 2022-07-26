@@ -7,8 +7,8 @@ if __name__ == "__main__":
     This script uses the PlanTemporalNetwork class.
     First it creates the PDDL domain and problem files.
     Then it loads a temporal plan from file and generates a temporal network.
-    Then it simulates the execution of the temporal plan for some time, storing the current
-    state and the remaining TILs. Some TILs represent the effects of ongoing actinos.
+    Then it simulates the execution of the temporal plan for some time,
+    returning the current state and effects of ongoing actions as TILs.
     Finally, it prints the current state as a new problem file.
     """
 
