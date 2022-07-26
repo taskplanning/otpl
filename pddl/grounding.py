@@ -239,13 +239,13 @@ class Grounding:
             return predicate == effect.formula.name
         return False   
 
-    #===============#
-    # spike methods #
-    #===============#
+    #==========================#
+    # get propositional spikes #
+    #==========================#
 
     def get_initial_state_spike(self):
         """
-        return numpy array of propositional initial state
+        return numpy array of propositional initial state.
         """
         if not self.grounded:
             return None
@@ -372,9 +372,9 @@ class Grounding:
             # forall, numeric, continuous, conditional, and empty
             return
     
-    #===============#
-    # spike helpers #
-    #===============#
+    #======================#
+    # state helper methods #
+    #======================#
 
     def check_simple_conditions(self, action_id : int, state : np.ndarray) -> bool:
         """
@@ -389,24 +389,37 @@ class Grounding:
             return False
         return True
 
-    def apply_simple_effects(self, action_id : int, state : np.ndarray) -> np.ndarray:
-        """
-        Apply the propositional effects of the action to the state, returning the new state.
-        """
-        adds, dels = self.get_action_effect_spike_from_id(action_id)
-        new_state = np.logical_xor(state, np.logical_and(state, dels))
-        return np.logical_or(new_state, adds)
-
-    def simple_goal_achieved(self, state : np.ndarray) -> bool:
+    def check_simple_goal_achieved(self, state : np.ndarray, goal : GoalDescriptor = None) -> bool:
         """
         Checks if the simple goal true in the state.
         """
+        if goal is None: goal = self.problem.goal
         positive_conditions = np.zeros(self.proposition_count, dtype=bool)
         negative_conditions = np.zeros(self.proposition_count, dtype=bool)
-        self.get_simple_conditions(self.problem.goal, positive_conditions, negative_conditions)
+        self.get_simple_conditions(goal, positive_conditions, negative_conditions)
         for id in np.nonzero(positive_conditions)[0]:
             if not state[id]: return False
         for id in np.nonzero(negative_conditions)[0]:
             if state[id]: return False
         return True
-        # return not np.any(np.logical_xor(positive_conditions, np.logical_and(positive_conditions, state)))
+
+    def apply_simple_effects(self, action_id : int, state : np.ndarray) -> np.ndarray:
+        """
+        Apply the propositional effects of the action to the state, returning the new state.
+        The returned state is in the form of a boolean array representing the propositional state.
+        """
+        adds, dels = self.get_action_effect_spike_from_id(action_id)
+        new_state = np.logical_xor(state, np.logical_and(state, dels))
+        return np.logical_or(new_state, adds)
+
+    def apply_simple_state(self, state : np.ndarray, problem : Problem = None) -> np.ndarray:
+        """
+        Update the problem with the given propositional state.
+        param state: boolean array representing the propositional state.
+        param problem: the problem object to update, if None then the grounded problem is used.
+        """
+        if problem is None: problem = self.problem
+        problem.propositions.clear()
+        for id in np.nonzero(state)[0]:
+            problem.propositions.append(self.get_proposition_from_id(id))
+        return problem

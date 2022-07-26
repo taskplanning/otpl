@@ -108,7 +108,7 @@ class PlanTemporalNetwork:
         with open(plan_file, 'r') as f:
             for line in f:
 
-                # parse line, ignoring temporal information
+                # parse line
                 time = float(line.split(':')[0])
                 action = line.split(":")[1].split("[")[0].strip()
                 duration = float(line.split("[")[1].split("]")[0])

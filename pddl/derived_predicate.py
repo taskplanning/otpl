@@ -11,6 +11,12 @@ class DerivedPredicate:
     def __repr__(self) -> str:
         return "(:derived " + self.predicate.print_pddl() + " " + repr(self.condition) + ")"
 
+    def copy(self):
+        """
+        Returns a deep copy of the derived predicate.
+        """
+        return DerivedPredicate(self.condition.copy(), self.predicate.copy())
+
     def bind_parameters(self, parameters: list[TypedParameter]) -> 'DerivedPredicate':
         """
         Binds the parameters of the derived predicate to the given parameters.

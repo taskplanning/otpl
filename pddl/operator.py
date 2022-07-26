@@ -15,7 +15,6 @@ class Operator:
     """
 
     def __init__(self,
-            # header
             formula  : AtomicFormula,
             durative : bool,
             duration : Duration = None,
@@ -29,7 +28,23 @@ class Operator:
         self.effect : Effect = effect if effect else Effect()
 
     # ======= #
-    # Setters #
+    # cloning #
+    # ======= #
+
+    def copy(self) -> 'Operator':
+        """
+        Returns a deep copy of this operator.
+        """
+        return Operator(
+            formula=self.formula.copy(),
+            durative=self.durative,
+            duration=self.duration.copy(),
+            condition=self.condition.copy(),
+            effect=self.effect.copy()
+        )
+
+    # ======= #
+    # setters #
     # ======= #
 
     def set_constant_duration(self, duration : float):
@@ -138,7 +153,7 @@ class Operator:
             self.effect = EffectConjunction(effects=[self.effect, effect])
 
     # ======== #
-    # Printing #
+    # printing #
     # ======== #
 
     def __str__(self) -> str:
@@ -157,7 +172,7 @@ class Operator:
         return self.formula.print_pddl(include_types=False)
 
     # ========= #
-    # Grounding #
+    # grounding #
     # ========= #
     
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Operator':

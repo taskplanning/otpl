@@ -11,7 +11,7 @@ class AtomicFormula:
     A class used to represent an atomic formula from the domain.
     """
     
-    def __init__(self, name : str, typed_parameters : List[TypedParameter] = None, grounded : bool = False) -> None:
+    def __init__(self, name : str, typed_parameters : List[TypedParameter] = None) -> None:
         self.name = name
         self.typed_parameters : list[TypedParameter] = typed_parameters if typed_parameters else []
 
@@ -54,6 +54,14 @@ class AtomicFormula:
 
     def __repr__(self):
         return self.print_pddl(False)
+
+    def copy(self) -> 'AtomicFormula':
+        """
+        Returns a deep copy of the atomic formula.
+        """
+        return AtomicFormula(
+            self.name,
+            typed_parameters=[ TypedParameter(p.type, p.label, p.value) for p in self.typed_parameters])
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'AtomicFormula':
         """

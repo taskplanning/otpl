@@ -27,7 +27,39 @@ class Domain:
         self.derived_predicates : List[DerivedPredicate] = []
 
     # ======= #
-    # Setters #
+    # cloning #
+    # ======= #
+
+    def copy(self) -> 'Domain':
+        """
+        Returns a deep copy of the problem.
+        """
+        clone = Domain(self.domain_name)
+        clone.requirements = self.requirements.copy()
+        
+        # types
+        for name, type in self.type_tree.items():
+            clone.add_type(name, type.parent)
+        clone.constants_type_map = self.constants_type_map.copy()
+        for type in self.type_constants_map:
+            clone.type_constants_map[type] = self.type_constants_map[type].copy()
+        
+        # predicates, functions, operators
+        for formula in self.predicates.values():
+            clone.predicates[formula.name] = formula.copy()
+        for formula in self.functions.values():
+            clone.functions[formula.name] = formula.copy()
+        for operator in self.operators.values():
+            clone.operators[operator.formula.name] = operator.copy()
+
+        # derived predicates
+        for derived_predicate in self.derived_predicates:
+            clone.derived_predicates.append(derived_predicate.copy())
+
+        return clone
+
+    # ======= #
+    # setters #
     # ======= #
 
     def add_type(self, type_name : str, parent_type : str = "object"):
@@ -111,7 +143,7 @@ class Domain:
 
 
     # =================== #
-    # Queries and utility #
+    # queries and utility #
     # =================== #
 
 
@@ -126,7 +158,7 @@ class Domain:
         return self.is_sub_type(self.type_tree[type].parent, parent)
         
     # ======== #
-    # Printing #
+    # printing #
     # ======== #
 
     def __str__(self) -> str:
