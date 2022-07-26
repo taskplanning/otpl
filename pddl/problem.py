@@ -48,8 +48,8 @@ class Problem:
         for val,func in self.functions: clone.functions.append((val,func.copy()))
         for til in self.timed_initial_literals: clone.timed_initial_literals.append(til.copy())
 
-        clone.goal = self.goal.copy()
-        clone.metric = self.metric.copy() if self.metric is not None else None
+        clone.goal = self.goal.copy() if self.goal else None
+        clone.metric = self.metric.copy() if self.metric else None
         
         clone.current_time = self.current_time
 
