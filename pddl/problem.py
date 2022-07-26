@@ -1,3 +1,4 @@
+import numpy as np
 from pddl.domain import Domain
 from pddl.effect import EffectNegative, EffectSimple
 from pddl.goal_descriptor import GoalConjunction, GoalDescriptor, GoalSimple, GoalType
@@ -15,8 +16,8 @@ class Problem:
     """
 
     def __init__(self, problem_name : str, domain : Domain) -> None:
-        self.problem_name = problem_name
-        self.domain_name = domain.domain_name
+        self.problem_name : str = problem_name
+        self.domain_name : str = domain.domain_name
         self.domain = domain
         self.requirements : list[str] = []
         self.objects_type_map : dict[str,str] = {}
@@ -27,6 +28,31 @@ class Problem:
         self.goal : GoalDescriptor = None
         self.metric : Metric = None
         self.current_time = 0.0
+
+    # =============== #
+    # Problem cloning #
+    # =============== #
+
+    def copy(self) -> 'Problem':
+        """
+        Returns a copy of the problem.
+        """
+        clone = Problem(self.problem_name, self.domain)
+        clone.requirements = self.requirements.copy()
+        clone.objects_type_map = self.objects_type_map.copy()
+        clone.type_objects_map = self.type_objects_map.copy()
+
+        # TODO do a deep copy here
+        clone.propositions = self.propositions.copy()
+        clone.functions = self.functions.copy()
+        clone.timed_initial_literals = self.timed_initial_literals.copy()
+
+        # TODO do any kind of copy here
+        clone.goal = self.goal
+        clone.metric = self.metric
+
+        clone.current_time = self.current_time
+        return clone
 
     # ======= #
     # Setters #

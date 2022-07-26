@@ -61,7 +61,7 @@ class Planner():
         initial_state = self.grounding.get_initial_state_spike()
 
         # check if the goal is achieved in the initial state
-        if self.grounding.simple_goal_achieved(initial_state):
+        if self.grounding.check_simple_goal_achieved(initial_state):
             return PlanSequential(domain, problem)
 
         # create the relaxed plan graph and determine unreachable actions
@@ -97,7 +97,7 @@ class Planner():
                 new_state = self.grounding.apply_simple_effects(id, pstate.state)
 
                 # check goal
-                if self.grounding.simple_goal_achieved(new_state):
+                if self.grounding.check_simple_goal_achieved(new_state):
                     goal_achieved = True
                     # select child immediately
                     pstate = PriorityState(
