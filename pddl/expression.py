@@ -49,6 +49,21 @@ class ExprBase:
         elif self.expr_type == ExprBase.ExprType.SPECIAL:
             return self.special_type.value
 
+    def copy(self) -> 'ExprBase':
+        """
+        Returns a deep copy of the expression.
+        """
+        if self.expr_type == ExprBase.ExprType.CONSTANT:
+            return ExprBase(ExprBase.ExprType.CONSTANT, constant=self.constant)
+        elif self.expr_type == ExprBase.ExprType.FUNCTION:
+            return ExprBase(ExprBase.ExprType.FUNCTION, function=self.function.copy())
+        elif self.expr_type == ExprBase.ExprType.BINARY_OPERATOR:
+            return ExprBase(ExprBase.ExprType.BINARY_OPERATOR, op=self.op)
+        elif self.expr_type == ExprBase.ExprType.UMINUS:
+            return ExprBase(ExprBase.ExprType.UMINUS)
+        elif self.expr_type == ExprBase.ExprType.SPECIAL:
+            return ExprBase(ExprBase.ExprType.SPECIAL, special_type=self.special_type)
+
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'ExprBase':
         """
         Binds the parameters of a copy of the expression to the given list of parameters.
@@ -89,6 +104,12 @@ class ExprComposite:
                     return_string += ")"
                     op_stack = 0
         return return_string
+
+    def copy(self) -> 'ExprComposite':
+        """
+        Returns a copy of the expression.
+        """
+        return ExprComposite([token.copy() for token in self.tokens])
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'ExprComposite':
         """

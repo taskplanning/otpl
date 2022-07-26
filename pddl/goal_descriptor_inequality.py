@@ -30,5 +30,8 @@ class Inequality(GoalDescriptor):
     def __repr__(self) -> str:
         return "(" + self.comparison_type.value + " " + str(self.lhs) + " " + str(self.rhs) + ")"
 
+    def copy(self) -> 'GoalDescriptor':
+        return Inequality(self.comparison_type, self.lhs.copy(), self.rhs.copy())
+
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
         return Inequality(self.comparison_type, self.lhs.bind_parameters(parameters), self.rhs.bind_parameters(parameters))

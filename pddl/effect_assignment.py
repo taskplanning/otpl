@@ -35,6 +35,12 @@ class Assignment(Effect):
             return "(decrease " + self.lhs.print_pddl() + ' ' + repr(self.rhs) + ')' 
         return "(" + self.assign_type.value + " " + self.lhs.print_pddl() + ' ' + repr(self.rhs) + ')' 
 
+    def copy(self) -> 'Effect':
+        """
+        Returns a deep copy of the effect.
+        """
+        return Assignment(self.assign_type, self.lhs.copy(), self.rhs.copy())
+
     def bind_parameters(self, parameters: list[TypedParameter]) -> 'Effect':
         """
         Binds the parameters of the effect to the given parameters.

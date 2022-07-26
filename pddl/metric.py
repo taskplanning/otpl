@@ -15,6 +15,12 @@ class Metric:
     def __repr__(self) -> str:
         return "(:metric " + self.metric_spec.value + " " + repr(self.expression) + ")"
 
+    def copy(self) -> 'Metric':
+        """
+        Returns a deep copy of the metric.
+        """
+        return Metric(self.metric_spec, self.expression.copy())
+
     def bind_parameters(self, parameters: list[TypedParameter]) -> 'Metric':
         """
         Binds the parameters of the metric to the given parameters.

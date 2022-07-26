@@ -9,3 +9,6 @@ class TimedInitialLiteral:
 
     def __repr__(self) -> str:
         return "(at " + str(self.time) + " " + repr(self.effect) + ")"
+
+    def copy(self) -> "TimedInitialLiteral":
+        return TimedInitialLiteral(self.time, self.effect.copy())

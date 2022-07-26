@@ -4,6 +4,7 @@ from pddl.problem import Problem
 
 def create_temporal_problem() -> Problem:
 
+    domain = create_temporal_domain()
     problem = Problem("match_problem", domain)
 
     # objects
@@ -32,7 +33,5 @@ def create_temporal_problem() -> Problem:
 
 if __name__ == "__main__":
     
-    domain = create_temporal_domain()
     problem = create_temporal_problem()
-    
     print(problem)
