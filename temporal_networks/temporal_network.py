@@ -1,5 +1,5 @@
 from queue import PriorityQueue
-
+import json
 class TemporalNetwork:
     """
     represents a simple temporal network as a graph.
@@ -129,3 +129,20 @@ class TemporalNetwork:
                 print("\t\t{\"source\": " + str(node1) + ", \"target\": " + str(node2) + ", \"label\": \"" + str(self.edges[node1][node2]) + "\"},")
         print("\t]")
         print("}")
+    
+    def save_as_json(self, filename):
+        """
+        Saves the network as a JSON to filename.json
+        """
+        toDump = {}
+        toDump["nodes"] = [{"id": str(n), "label": self.labels[n]} for n in self.nodes]
+        toDump["constraints"] = []
+        for node1 in self.nodes:
+            for node2 in self.edges[node1]:
+                if node1 == node2: continue
+                if self.edges[node1][node2] == float("inf"): continue
+                else:
+                    toDump["constraints"].append({"source": str(node1), "target": str(node2), "label": str(self.edges[node1][node2])})
+        with open("{}.json".format(filename), 'w') as fp:
+            json.dump(toDump, fp)
+
