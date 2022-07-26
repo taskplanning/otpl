@@ -35,21 +35,23 @@ class Problem:
 
     def copy(self) -> 'Problem':
         """
-        Returns a copy of the problem.
+        Returns a deep copy of the problem.
         """
         clone = Problem(self.problem_name, self.domain)
         clone.requirements = self.requirements.copy()
-        clone.objects_type_map = self.objects_type_map.copy()
-        clone.type_objects_map = self.type_objects_map.copy()
 
+        clone.objects_type_map = self.objects_type_map.copy()
+        for type in self.type_objects_map:
+            clone.type_objects_map[type] = self.type_objects_map[type].copy()
+        
         # TODO do a deep copy here
-        clone.propositions = self.propositions.copy()
-        clone.functions = self.functions.copy()
-        clone.timed_initial_literals = self.timed_initial_literals.copy()
+        for prop in self.propositions: clone.propositions.append(prop.copy())
+        for val,func in self.functions: clone.functions.append((val,func.copy()))
+        for til in self.timed_initial_literals: clone.timed_initial_literals.append(til.copy())
 
         # TODO do any kind of copy here
-        clone.goal = self.goal
-        clone.metric = self.metric
+        clone.goal = self.goal.copy()
+        clone.metric = self.metric.copy()
 
         clone.current_time = self.current_time
         return clone
