@@ -43,7 +43,7 @@ class Planner():
         self.domain = None
         self.problem = None
 
-    def find_sequential_plan(self, domain : Domain, problem : Problem, optimal : bool = False, verbosity : int = 1) -> PlanSequential:
+    def find_sequential_plan(self, domain : Domain, problem : Problem, optimal : bool = False, verbose : bool = False) -> PlanSequential:
         """
         Searches for a sequential plan in the given a propositional domain and problem.
         By default the search algorithm is best first search.
@@ -55,13 +55,11 @@ class Planner():
 
         self.domain = domain
         self.problem = problem
-
-        self.grounding = Grounding()
-        self.grounding.ground_problem(domain, problem)
-        initial_state = self.grounding.get_initial_state_spike()
+        self.grounding = problem.grounding
+        initial_state = self.problem.get_initial_state()
 
         # check if the goal is achieved in the initial state
-        if self.grounding.check_simple_goal_achieved(initial_state):
+        if self.grounding.check_simple_goal(initial_state, problem.goal):
             return PlanSequential(domain, problem)
 
         # create the relaxed plan graph and determine unreachable actions
@@ -80,13 +78,17 @@ class Planner():
         
         # begin best-first search (or A* if optimal)
         goal_achieved = False
+        expanded = 0
         while not queue.empty() and not goal_achieved:
 
             pstate = queue.get()
+            expanded += 1
 
             # compute heuristic for selected node
             rpg.build_graph(pstate.state)
             _, relaxed_action_count = rpg.get_relaxed_plan()
+
+            if verbose and expanded%1000==0: print("(n: %d; h: %d; q: %d" % (expanded, relaxed_action_count, queue.qsize()))
 
             # get next states
             for id in rpg.helpful_actions:
@@ -94,10 +96,11 @@ class Planner():
                     continue
 
                 # action is applicable 
-                new_state = self.grounding.apply_simple_effects(id, pstate.state)
+                new_state = pstate.state.copy()
+                self.grounding.apply_simple_effects(id, new_state)
 
                 # check goal
-                if self.grounding.check_simple_goal_achieved(new_state):
+                if self.grounding.check_simple_goal(new_state, problem.goal):
                     goal_achieved = True
                     # select child immediately
                     pstate = PriorityState(
@@ -140,5 +143,5 @@ if __name__ == "__main__":
 
     # find sequential plan
     planner = Planner()
-    plan = planner.find_sequential_plan(pddl_parser.domain, pddl_parser.problem, verbosity=0)
+    plan = planner.find_sequential_plan(pddl_parser.domain, pddl_parser.problem, optimal=False, verbose=True)
     plan.print_plan()

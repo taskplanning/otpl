@@ -1,11 +1,13 @@
 import numpy as np
+
 from pddl.domain import Domain
 from pddl.effect import EffectNegative, EffectSimple
 from pddl.goal_descriptor import GoalConjunction, GoalDescriptor, GoalSimple, GoalType
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.metric import Metric
+from pddl.state import State
 from pddl.timed_initial_literal import TimedInitialLiteral
-
+from pddl.grounding import Grounding
 
 class Problem:
     """
@@ -16,18 +18,75 @@ class Problem:
     """
 
     def __init__(self, problem_name : str, domain : Domain) -> None:
+
+        # problem header
         self.problem_name : str = problem_name
         self.domain_name : str = domain.domain_name
         self.domain = domain
         self.requirements : list[str] = []
+
+        # current time (subtracted from TILs on printing)        
+        self.current_time = 0.0
+
+        # objects
         self.objects_type_map : dict[str,str] = {}
         self.type_objects_map : dict[str,list[str]] = {}
+
+        # initial state (ungrounded form)
         self.propositions : list[AtomicFormula] = []
         self.functions : list[tuple[float,AtomicFormula]] = []
         self.timed_initial_literals : list[TimedInitialLiteral] = []
+
+        # grounding
+        self.grounding = Grounding()
+
+        # goal and metric
         self.goal : GoalDescriptor = None
         self.metric : Metric = None
-        self.current_time = 0.0
+
+    def update_with_state(self, state : State) -> None:
+        """
+        Update the problem object to the given state.
+        """
+        self.current_time = state.time
+
+        # propositions
+        self.propositions.clear()
+        for id in np.nonzero(state.logical)[0]:
+            self.propositions.append(self.grounding.get_proposition_from_id(id))
+
+        # functions
+        self.functions.clear()
+        for id in [np.any(i) for i in np.logical_not(np.isnan(state.numeric))]:
+            self.functions.append((state.numeric[id], self.grounding.get_pne_from_id(id)))
+
+    # ========= #
+    # grounding #
+    # ========= #
+
+    def ground(self):
+        self.grounding.ground_problem(self, self.domain)
+
+
+    # ====== #
+    # states #
+    # ====== #
+
+    def get_initial_state(self) -> State:
+        """
+        return numpy array of propositional initial state.
+        """
+        if not self.grounding.grounded:
+            self.grounding.ground_problem(self.domain, self)
+
+        state = State()
+        state.logical = np.zeros(self.grounding.proposition_count, dtype=bool)
+        state.numeric = np.zeros(self.grounding.function_count, dtype=float)
+        state.logical[[ self.grounding.get_id_from_proposition(p) for p in self.propositions ]] = True
+        for value, pne in self.functions:
+            state.numeric[self.grounding.get_id_from_pne(pne)] = value
+        
+        return state
 
     # ======= #
     # cloning #
@@ -53,6 +112,14 @@ class Problem:
         
         clone.current_time = self.current_time
 
+        return clone
+
+    def copy_with_state(self, state : State) -> 'Problem':
+        """
+        Returns a copy of the problem with the given state.
+        """
+        clone = self.copy()
+        clone.update_with_state(state)
         return clone
 
     # ======= #
@@ -156,7 +223,12 @@ class Problem:
                 if param1.value != param2.value:
                     match = False
                     break
-            if match: return
+            if match and value == val: 
+                return
+            if match:
+                # new assignment overrides the previous
+                self.functions.remove((val,func))
+                break
         self.functions.append((value,function))
 
     def add_simple_goal_from_str(self, predicate_name : str, params : list[str] = []):
@@ -217,7 +289,8 @@ class Problem:
         for func in self.functions:
             return_string += "  (= " + func[1].print_pddl() + " " + str(func[0]) + ")\n"
         for til in self.timed_initial_literals:
-            return_string += "  " + repr(til) + "\n"
+            if self.current_time <= til.time:
+                return_string += "  " + til.print_pddl(self.current_time) + "\n"
         return_string += ")\n"
 
         # goal & metric

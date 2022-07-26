@@ -2,19 +2,17 @@ import numpy as np
 from pddl.domain import Domain
 from pddl.grounding import Grounding
 from pddl.problem import Problem
+from pddl.state import State
 
 class RelaxedPlanGraph:
 
-    def __init__(self, domain : Domain, problem : Problem, grounding : Grounding = None) -> None:
+    def __init__(self, domain : Domain, problem : Problem) -> None:
 
         self.domain    : Domain = domain
         self.problem   : Problem = problem
-
-        if grounding is None:
-            grounding = Grounding()
-            grounding.ground_problem(domain, problem)
+        self.grounding : Grounding = problem.grounding
         
-        self.grounding : Grounding = grounding
+        self.grounding.ground_problem(domain, problem)
 
         # plan graph details
         self.last_layer = 0
@@ -48,8 +46,8 @@ class RelaxedPlanGraph:
         """
         self.actions_cached = True
         for action_id in range(self.grounding.action_count):
-            pos, _ = self.grounding.get_action_condition_spike_from_id(action_id)
-            adds, _ = self.grounding.get_action_effect_spike_from_id(action_id)
+            pos, _ = self.grounding.get_simple_action_condition_from_id(action_id)
+            adds, _ = self.grounding.get_simple_action_effect_from_id(action_id)
             self.action_add_effect_spikes[action_id] = adds
             self.action_positive_condition_spikes[action_id] = pos
             self.action_precondition_counts[action_id] = np.count_nonzero(pos)
@@ -60,7 +58,7 @@ class RelaxedPlanGraph:
                     self.proposition_condition_map[prop] = []
                 self.proposition_condition_map[prop].append(action_id)
 
-    def build_graph(self, state : np.ndarray = None, stop_at_goal = True) -> int:
+    def build_graph(self, state : State = None, stop_at_goal = True) -> int:
         """
         Builds the relaxed plan graph from a given state, or the problem's
         initial state if state is None.
@@ -77,7 +75,7 @@ class RelaxedPlanGraph:
         # initialise fact layer
         self.last_layer = 0
         self.action_layers[self.last_layer+1] = set()
-        start_state = self.grounding.get_initial_state_spike() if state is None else state
+        start_state = self.problem.get_initial_state().logical if state is None else state.logical
         self.fact_membership = np.ones(self.grounding.proposition_count, dtype=int) * -1
         for prop_id in np.nonzero(start_state)[0]:
             self.fact_membership[prop_id] = self.last_layer

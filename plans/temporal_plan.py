@@ -41,15 +41,10 @@ class PlanTemporalNetwork:
     Represents the plan as a temporal network.
     """
 
-    def __init__(self, domain : Domain, problem : Problem, grounding : Grounding = None):
+    def __init__(self, domain : Domain, problem : Problem):
         self.domain : Domain = domain
         self.problem : Problem = problem
-
-        if grounding is None:
-            grounding = Grounding()
-            grounding.ground_problem(domain, problem)
-
-        self.grounding : Grounding = grounding
+        self.grounding : Grounding = problem.grounding
 
         self.epsilon = 0.01
         
@@ -160,11 +155,11 @@ class PlanTemporalNetwork:
             else: continue
 
             # get simple conditions of happening
-            pos, neg = self.grounding.get_action_condition_spike_from_id(happening.action_id, time_spec)
+            pos, neg = self.grounding.get_simple_action_condition_from_id(happening.action_id, time_spec)
 
             # if happening is an action start, add overall conditions
             if time_spec == TimeSpec.AT_START:
-                p, n = self.grounding.get_action_condition_spike_from_id(happening.action_id, TimeSpec.OVER_ALL)
+                p, n = self.grounding.get_simple_action_condition_from_id(happening.action_id, TimeSpec.OVER_ALL)
                 np.logical_or(pos, p, out=pos)
                 np.logical_or(neg, n, out=neg)
 
@@ -176,12 +171,12 @@ class PlanTemporalNetwork:
                 
                 # get simple effects of previous happening
                 if prev.type == HappeningType.TIMED_INITIAL_LITERAL:
-                    adds, dels = self.grounding.get_til_effect_spike(prev.til)              
+                    adds, dels = self.grounding.get_simple_til_effect(prev.til)              
                 elif prev.type == HappeningType.PLAN_START:
-                    adds = self.grounding.get_initial_state_spike()
+                    adds = self.problem.get_initial_state().logical
                     dels = np.zeros(self.grounding.proposition_count, dtype=bool)
                 else:
-                    adds, dels = self.grounding.get_action_effect_spike_from_id(prev.action_id, time_spec)              
+                    adds, dels = self.grounding.get_simple_action_effect_from_id(prev.action_id, time_spec)              
 
                 # check if the effects support the conditions
                 pos_support = np.logical_and(pos, adds)
@@ -198,7 +193,7 @@ class PlanTemporalNetwork:
                     # check interference with the supported conditions
                     if time_spec == TimeSpec.AT_START:
                         # supported overall conditions
-                        p, n = self.grounding.get_action_condition_spike_from_id(happening.action_id, TimeSpec.OVER_ALL)
+                        p, n = self.grounding.get_simple_action_condition_from_id(happening.action_id, TimeSpec.OVER_ALL)
                         np.logical_and(pos_support, p, out=p)
                         np.logical_and(neg_support, n, out=n)
                         if np.any(p) or np.any(n):
@@ -231,11 +226,11 @@ class PlanTemporalNetwork:
 
             # fetch effects of happening
             if self.time_sorted_happenings[inter_index].type == HappeningType.TIMED_INITIAL_LITERAL:
-                adds, dels = self.grounding.get_til_effect_spike(self.time_sorted_happenings[inter_index].til)
+                adds, dels = self.grounding.get_simple_til_effect(self.time_sorted_happenings[inter_index].til)
             elif self.time_sorted_happenings[inter_index].type == HappeningType.ACTION_START:
-                adds, dels = self.grounding.get_action_effect_spike_from_id(self.time_sorted_happenings[inter_index].action_id, TimeSpec.AT_START)
+                adds, dels = self.grounding.get_simple_action_effect_from_id(self.time_sorted_happenings[inter_index].action_id, TimeSpec.AT_START)
             elif self.time_sorted_happenings[inter_index].type == HappeningType.ACTION_END:
-                adds, dels = self.grounding.get_action_effect_spike_from_id(self.time_sorted_happenings[inter_index].action_id, TimeSpec.AT_END)
+                adds, dels = self.grounding.get_simple_action_effect_from_id(self.time_sorted_happenings[inter_index].action_id, TimeSpec.AT_END)
             else: continue
 
             # check if the effects interfere with the support

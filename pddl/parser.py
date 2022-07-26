@@ -190,7 +190,10 @@ class Parser(pddl22Visitor):
         typed_parameters=self.visit(ctx.term_list())
         if name in self.domain.predicates:
             for domain_param, param in zip(self.domain.predicates[name].typed_parameters, typed_parameters):
-                param.type = domain_param.type            
+                param.type = domain_param.type
+        if name in self.domain.functions:
+            for domain_param, param in zip(self.domain.functions[name].typed_parameters, typed_parameters):
+                param.type = domain_param.type
         return AtomicFormula(name, typed_parameters)
 
     #=============#
@@ -595,8 +598,8 @@ class Parser(pddl22Visitor):
 
     def visitInit_element_assign(self, ctx: pddl22Parser.Init_element_assignContext):
         function = self.visit(ctx.atomic_formula())
-        function.value = float(ctx.number().getText())
-        self.problem.functions.append(function)
+        value = float(ctx.number().getText())
+        self.problem.functions.append((value,function))
 
     def visitInit_element_til(self, ctx: pddl22Parser.Init_element_tilContext):
         til = TimedInitialLiteral(float(ctx.number().getText()),self.visit(ctx.p_effect()))
