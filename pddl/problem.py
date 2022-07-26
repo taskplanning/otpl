@@ -44,16 +44,15 @@ class Problem:
         for type in self.type_objects_map:
             clone.type_objects_map[type] = self.type_objects_map[type].copy()
         
-        # TODO do a deep copy here
         for prop in self.propositions: clone.propositions.append(prop.copy())
         for val,func in self.functions: clone.functions.append((val,func.copy()))
         for til in self.timed_initial_literals: clone.timed_initial_literals.append(til.copy())
 
-        # TODO do any kind of copy here
         clone.goal = self.goal.copy()
-        clone.metric = self.metric.copy()
-
+        clone.metric = self.metric.copy() if self.metric is not None else None
+        
         clone.current_time = self.current_time
+
         return clone
 
     # ======= #
