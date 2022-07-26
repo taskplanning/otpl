@@ -29,7 +29,23 @@ class Operator:
         self.effect : Effect = effect if effect else Effect()
 
     # ======= #
-    # Setters #
+    # cloning #
+    # ======= #
+
+    def copy(self) -> 'Operator':
+        """
+        Returns a deep copy of this operator.
+        """
+        return Operator(
+            formula=self.formula.copy(),
+            durative=self.durative,
+            duration=self.duration.copy(),
+            condition=self.condition.copy(),
+            effect=self.effect.copy()
+        )
+
+    # ======= #
+    # setters #
     # ======= #
 
     def set_constant_duration(self, duration : float):

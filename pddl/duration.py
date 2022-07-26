@@ -26,6 +26,12 @@ class Duration:
     def __repr__(self) -> str:
         return "()"
 
+    def copy(self) -> 'Duration':
+        """
+        Returns a deep copy of this duration.
+        """
+        return Duration(self.duration_type)
+
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Duration':
         """
         Binds the parameters of a copy of the duration to the given list of parameters.
@@ -43,7 +49,10 @@ class DurationInequality(Duration):
 
     def __repr__(self) -> str:
         return repr(self.ineq)
-  
+
+    def copy(self) -> 'Duration':
+        return DurationInequality(self.ineq.copy())
+
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Duration':
         return DurationInequality(self.ineq.bind_parameters(parameters))
 
@@ -60,6 +69,9 @@ class DurationTimed(Duration):
     def __repr__(self) -> str:
         return '(' + self.time_spec + ' ' + repr(self.ineq) + ')'
 
+    def copy(self) -> 'Duration':
+        return DurationTimed(self.time_spec, self.ineq.copy())
+
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Duration':
         return DurationTimed(self.time_spec, self.ineq.bind_parameters(parameters))
 
@@ -73,6 +85,9 @@ class DurationConjunction(Duration):
 
     def __repr__(self) -> str:
         return '(and\n  ' + '\n  '.join(repr(c) for c in self.constraints) + '\n)'
+
+    def copy(self) -> 'Duration':
+        return DurationConjunction(self.constraints)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Duration':
         bound_contraints = [ dur.bind_parameters(parameters) for dur in self.constraints ]

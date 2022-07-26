@@ -29,9 +29,9 @@ class Problem:
         self.metric : Metric = None
         self.current_time = 0.0
 
-    # =============== #
-    # Problem cloning #
-    # =============== #
+    # ======= #
+    # cloning #
+    # ======= #
 
     def copy(self) -> 'Problem':
         """
@@ -56,7 +56,7 @@ class Problem:
         return clone
 
     # ======= #
-    # Setters #
+    # setters #
     # ======= #
 
     def add_object(self, name : str, type : str = "object"):
