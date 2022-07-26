@@ -10,6 +10,24 @@ class TemporalNetwork:
         self.labels : dict[int, str] = {}
         self.edges = {}
 
+    # ======= #
+    # cloning #
+    # ======= #
+
+    def copy(self):
+        """
+        return a copy of the network.
+        """
+        new_network = TemporalNetwork()
+        new_network.nodes = self.nodes.copy()
+        new_network.labels = self.labels.copy()
+        new_network.edges = self.edges.copy()
+        return new_network
+
+    # ======= # 
+    # setters #
+    # ======= # 
+
     def add_node(self, node : int, label : str) -> None:
         """
         add a node to the network with label
@@ -95,7 +113,11 @@ class TemporalNetwork:
                         del self.edges[i][j]
                     elif self.edges[i][j] >=0 and self.edges[k][j] >= 0:
                         del self.edges[i][j]
-                        
+
+    # ======== #
+    # printing #
+    # ======== #
+
     def print_dot_graph(self):
         """
         print the graph in DOT format.
