@@ -1,7 +1,7 @@
 import numpy as np
 
 from pddl.domain import Domain
-from pddl.effect import EffectNegative, EffectSimple
+from pddl.effect import EffectNegative, EffectSimple, EffectType
 from pddl.goal_descriptor import GoalConjunction, GoalDescriptor, GoalSimple, GoalType
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.metric import Metric
@@ -44,22 +44,6 @@ class Problem:
         self.goal : GoalDescriptor = None
         self.metric : Metric = None
 
-    def update_with_state(self, state : State) -> None:
-        """
-        Update the problem object to the given state.
-        """
-        self.current_time = state.time
-
-        # propositions
-        self.propositions.clear()
-        for id in np.nonzero(state.logical)[0]:
-            self.propositions.append(self.grounding.get_proposition_from_id(id))
-
-        # functions
-        self.functions.clear()
-        for id in [np.any(i) for i in np.logical_not(np.isnan(state.numeric))]:
-            self.functions.append((state.numeric[id], self.grounding.get_pne_from_id(id)))
-
     # ========= #
     # grounding #
     # ========= #
@@ -80,13 +64,30 @@ class Problem:
             self.grounding.ground_problem(self.domain, self)
 
         state = State()
+        state.time = self.current_time
         state.logical = np.zeros(self.grounding.proposition_count, dtype=bool)
-        state.numeric = np.zeros(self.grounding.function_count, dtype=float)
+        state.numeric = np.array([np.nan] * self.grounding.function_count, dtype=float)
         state.logical[[ self.grounding.get_id_from_proposition(p) for p in self.propositions ]] = True
         for value, pne in self.functions:
             state.numeric[self.grounding.get_id_from_pne(pne)] = value
-        
         return state
+
+
+    def update_with_state(self, state : State) -> None:
+        """
+        Update the problem object to the given state.
+        """
+        self.current_time = state.time
+
+        # propositions
+        self.propositions.clear()
+        for id in np.nonzero(state.logical)[0]:
+            self.propositions.append(self.grounding.get_proposition_from_id(id))
+
+        # functions
+        self.functions.clear()
+        for id in np.nonzero(np.logical_not(np.isnan(state.numeric)))[0]:
+            self.functions.append((state.numeric[id], self.grounding.get_pne_from_id(id)))
 
     # ======= #
     # cloning #
@@ -193,6 +194,7 @@ class Problem:
         """
         Adds a timed initial literal to the initial state.
         """
+        # TODO add effect matching here to avoid duplicates
         self.timed_initial_literals.append(timed_initial_literal)
 
     def add_assignment_from_str(self, value : float, function_name : str, params : list[str] = []):

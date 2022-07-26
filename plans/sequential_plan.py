@@ -80,7 +80,7 @@ class PlanSequential:
 
             # apply action effects
             action_id = grounding.get_id_from_action(action)
-            grounding.apply_simple_effects(action_id, state)
+            grounding.apply_simple_action_effects(action_id, state)
 
         if print_results:
             print("Plan is executable.")

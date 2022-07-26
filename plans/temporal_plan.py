@@ -1,18 +1,14 @@
 from enum import Enum
-from lib2to3.pgen2.token import TILDE
 from logging import raiseExceptions
-from time import time
 import numpy as np
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.domain import Domain
-from pddl.effect import Effect, EffectType
-from pddl.goal_descriptor import GoalDescriptor, GoalType
 from pddl.problem import Problem
 from pddl.grounding import Grounding
-from pddl.operator import Operator
 from pddl.time_spec import TimeSpec
 from pddl.timed_initial_literal import TimedInitialLiteral
 from temporal_networks.temporal_network import TemporalNetwork
+from pddl.state import State
 
 class HappeningType(Enum):
     PLAN_START   = "PLAN_START"
@@ -259,3 +255,58 @@ class PlanTemporalNetwork:
                     dist = self.temporal_network.find_shortest_path(source, sink)
                     if -self.epsilon < dist:
                         self.temporal_network.add_edge(source, sink, distance)
+
+    # =================== #
+    # simulated execution #
+    # =================== #
+
+    def simulate_execution(self, problem : Problem = None, until_time : float = None) -> tuple[State,list[TimedInitialLiteral]]:
+        """
+        Execute the plan on the given problem, returning the resultant state and remaining TILs.
+        Actions still executing are converted into TILs and TIFs. Note that the returned TILs and TIFs will
+        include some effects that are not normally allowed in PDDL as TIL/TIF, for example conditional effects
+        and more complex numeric effects. These will not appear in a printed PDDL problem.
+        param problem: The problem on which to execute the plan, if none then the problem used to parse the plan.
+        param until_time: Float time to stop execution, if none then the whole plan is executed.
+        """
+        if problem is None: problem = self.problem
+        current_state = problem.get_initial_state()
+        current_happening_index = 0
+        current_actions : set[int] = set()
+        until_time = until_time if until_time is not None else self.time_sorted_happenings[-1].time
+
+        while current_happening_index < len(self.time_sorted_happenings):
+
+            # move to next happening
+            happening = self.time_sorted_happenings[current_happening_index]
+            if until_time < happening.time:
+                current_state.time = until_time
+                break
+            current_state.time = happening.time
+
+            # apply effects of the happening
+            if happening.type == HappeningType.PLAN_START:
+                pass
+            elif happening.type == HappeningType.TIMED_INITIAL_LITERAL:
+                problem.grounding.apply_simple_til_effects(happening.til, current_state)
+            elif happening.type == HappeningType.ACTION_START:
+                problem.grounding.apply_simple_action_effects(happening.action_id, current_state, time_spec=TimeSpec.AT_START)
+                current_actions.add(happening.id)
+            elif happening.type == HappeningType.ACTION_END:
+                problem.grounding.apply_simple_action_effects(happening.action_id, current_state, time_spec=TimeSpec.AT_END)
+                current_actions.remove(happening.id - 1)
+
+            # move time forwards
+            current_happening_index += 1
+
+        # find remaining tils
+        tils = [ til.copy() for til in problem.timed_initial_literals if til.time > current_state.time ]
+
+        # create new tils for currently executing actions
+        for happening_id in current_actions:
+            time = self.happenings[happening_id+1].time
+            action = problem.grounding.get_action_from_id(self.happenings[happening_id].action_id)
+            effect = action.effect.filter_effects_to_time_spec(TimeSpec.AT_END)
+            tils.append(TimedInitialLiteral(time, effect))
+
+        return current_state, tils

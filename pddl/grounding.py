@@ -184,16 +184,16 @@ class Grounding:
             if self.predicate_heads[name][0] <= id and id < self.predicate_heads[name][1]:
                 id = id - self.predicate_heads[name][0]
                 params = self.domain.predicates[name].typed_parameters
-                return AtomicFormula(name, self.get_parameters_from_id(id, params), True)
+                return AtomicFormula(name, self.get_parameters_from_id(id, params))
 
     def get_pne_from_id(self, id : int) -> AtomicFormula:
         for name in self.function_heads:
             if self.function_heads[name][0] <= id and id < self.function_heads[name][1]:
                 id = id - self.function_heads[name][0]
                 params = self.domain.functions[name].typed_parameters
-                return AtomicFormula(name, self.get_parameters_from_id(id, params), True)
+                return AtomicFormula(name, self.get_parameters_from_id(id, params))
 
-    def get_action_from_id(self, id : int) -> AtomicFormula:
+    def get_action_from_id(self, id : int) -> Operator:
         for name in self.operator_heads:
             if self.operator_heads[name][0] <= id and id < self.operator_heads[name][1]:
                 id = id - self.operator_heads[name][0]
@@ -364,13 +364,13 @@ class Grounding:
     # state helper methods #
     #======================#
 
-    def check_simple_conditions(self, action_id : int, state : State) -> bool:
+    def check_simple_conditions(self, action_id : int, state : State, time_spec : TimeSpec = TimeSpec.AT_START) -> bool:
         """
         Checks if the action's simple conditions are satisfied in the given state.
         param action_id: the id of the action to check.
         param state: numpy array of boolean values representing the logical part of the state.
         """
-        pos, neg = self.get_simple_action_condition_from_id(action_id)
+        pos, neg = self.get_simple_action_condition_from_id(action_id, time_spec)
         # check positive preconditions
         if np.any(np.logical_xor(pos, np.logical_and(state.logical, pos))):
             return False
@@ -379,14 +379,22 @@ class Grounding:
             return False
         return True
 
-    def apply_simple_effects(self, action_id : int, state : State) -> None:
+    def apply_simple_action_effects(self, action_id : int, state : State, time_spec : TimeSpec = TimeSpec.AT_START) -> None:
         """
         Apply the propositional effects of the action to the logical state.
         """
-        adds, dels = self.get_simple_action_effect_from_id(action_id)
+        adds, dels = self.get_simple_action_effect_from_id(action_id, time_spec)
         np.logical_xor(state.logical, np.logical_and(state.logical, dels), out=state.logical)
         np.logical_or(state.logical, adds, out=state.logical)
-        
+    
+    def apply_simple_til_effects(self, til : TimedInitialLiteral, state : State) -> None:
+        """
+        Apply the propositional effects of the action to the logical state.
+        """
+        adds, dels = self.get_simple_til_effect(til)
+        np.logical_xor(state.logical, np.logical_and(state.logical, dels), out=state.logical)
+        np.logical_or(state.logical, adds, out=state.logical)
+
     def check_simple_goal(self, state : State, goal : GoalDescriptor) -> bool:
         """
         Checks if the simple goal true in the state.

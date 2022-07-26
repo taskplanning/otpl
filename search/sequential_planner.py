@@ -97,7 +97,7 @@ class Planner():
 
                 # action is applicable 
                 new_state = pstate.state.copy()
-                self.grounding.apply_simple_effects(id, new_state)
+                self.grounding.apply_simple_action_effects(id, new_state)
 
                 # check goal
                 if self.grounding.check_simple_goal(new_state, problem.goal):
