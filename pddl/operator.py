@@ -1,4 +1,3 @@
-from pddl import effect_assignment
 from pddl.duration import Duration, DurationInequality
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.effect import Effect, EffectConjunction, EffectNegative, EffectSimple, EffectType, TimedEffect
