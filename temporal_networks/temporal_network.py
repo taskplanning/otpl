@@ -142,6 +142,9 @@ class TemporalNetwork:
         self.name = name
         self.time_points : list[TimePoint] = []
         self.constraints: list[Constraint] = []
+    
+    def copy(self):
+        return TemporalNetwork(self.name, copy.deepcopy(self.time_points), copy.deepcopy(self.constraints))
 
     def add_time_point(self, time_point: TimePoint) -> None:
         """
@@ -149,14 +152,34 @@ class TemporalNetwork:
         """
         self.time_points.append(time_point)
 
-
     def add_constraint(self, constraint: Constraint) -> None:
         """
         add an edge (constraint) to the network. only constraints of type 'stc' are permitted in Temporal Network.
+        if source and sink nodes not in the time_points set, it adds them
         """
         assert constraint.type == "stc", "Only time-points of the type 'stc' are permitted."
-        self.constraints.append(constraint)
-    
+        # Checks if there is already a constraint with those time-points, if not it adds
+        existing = self.get_constraint_by_timepoint(constraint.source, constraint.sink)
+        if existing == None:
+            self.constraints.append(constraint)
+            if constraint.source not in self.time_points:
+                self.add_time_point(constraint.source)
+            if constraint.sink not in self.time_points:
+                self.add_time_point(constraint.sink)
+        # If the source and sink time-points are the same way round in the new constraint versus existing
+        elif existing.source == constraint.source:
+            # Checks whether the new constraint has a tighter bound
+            if constraint.ub < existing.ub:
+                existing.ub = constraint.ub
+            elif constraint.lb > existing.lb:
+                existing.lb = constraint.lb
+        # If the source and sink time-points are the wrong way round in the new constraint versus existing
+        elif existing.sink == constraint.source:
+            if -constraint.lb < existing.ub:
+                existing.ub = -constraint.lb
+            if -constraint.ub > existing.lb:
+                existing.lb = -constraint.ub
+
     def get_adjacency_matrix(self) -> dict[TimePoint, dict]:
         """
         gets adjacency matrix (dictionary) representation of temporal-network
@@ -279,7 +302,7 @@ class TemporalNetwork:
             elif constraint.sink == source and constraint.source == sink:
                 return constraint
             else:
-                raise AttributeError("No constraint between the two time-points")
+                return None
                         
     def print_dot_graph(self):
         """
@@ -311,7 +334,7 @@ class TemporalNetwork:
     
     def save_as_json(self, filename):
         """
-        Saves the network as a JSON to filename.json
+        saves the network as a JSON to filename.json
         """
         toDump = {}
         toDump["timepoints"] = [t.for_json() for t in self.time_points]
@@ -319,3 +342,92 @@ class TemporalNetwork:
         with open("{}.json".format(filename), 'w') as fp:
             json.dump(toDump, fp)
 
+
+class ProbabilisticTemporalNetwork(TemporalNetwork):
+    """
+    represents a probabilistic temporal network.
+    """
+    def __init__(self, name: str) -> None:
+        super().__init__(name)
+
+    def adds_constraint(self, constraint: Constraint) -> None:
+        """
+        add an edge (constraint) to the network. permits constraints of type 'pstc'.
+        """
+        # Checks if there is already a constraint with those time-points, if not it adds
+        existing = self.get_constraint_by_timepoint(constraint.source, constraint.sink)
+        if existing == None:
+            self.constraints.append(constraint)
+            if constraint.source not in self.time_points:
+                self.add_time_point(constraint.source)
+            if constraint.sink not in self.time_points:
+                self.add_time_point(constraint.sink)
+        # If the source and sink time-points are the same way round in the new constraint versus existing
+        elif existing.source == constraint.source:
+            # Checks whether the new constraint has a tighter bound
+            if constraint.ub < existing.ub:
+                existing.ub = constraint.ub
+            elif constraint.lb > existing.lb:
+                existing.lb = constraint.lb
+        # If the source and sink time-points are the wrong way round in the new constraint versus existing
+        elif existing.sink == constraint.source:
+            if -constraint.lb < existing.ub:
+                existing.ub = -constraint.lb
+            if -constraint.ub > existing.lb:
+                existing.lb = -constraint.ub
+    
+    def get_probabilistic_constraints(self) -> list[Constraint]:
+        """
+        returns a list of probabilistic constraints (those with type = pstc)
+        """
+        return [i for i in self.constraints if i.type == "pstc"]
+
+    
+    def get_requirement_constraints(self) -> list[Constraint]:
+        """
+        returns a list of requirement constraints (those with type = stc)
+        """
+        return [i for i in self.constraints if i.type == "stc"]
+
+    def set_controllability_of_time_points(self) -> None:
+        """
+        checks which time_points are uncontrollable (i.e. they come at the end of a probabilistic constraint). Sets the controllable flag
+        to True if controllable and False if not controllable
+        """
+        uncontrollable_time_points = [i.sink for i in self.get_probabilistic_constraints()]
+        for time_point in self.time_points:
+            if time_point in uncontrollable_time_points:
+                time_point.set_controllable("False")
+            else:
+                time_point.set_controllable("True")
+    
+    def get_controllable_time_points(self) -> list[TimePoint]:
+        """
+        returns a list of controllable time-points
+        """
+        self.set_controllability_of_time_points()
+        return [i for i in self.time_points if i.is_controllable == True]
+    
+    def get_uncontrollable_time_points(self) -> list[TimePoint]:
+        """
+        returns a list of uncontrollable time-points
+        """
+        self.set_controllability_of_time_points()
+        return [i for i in self.time_points if i.is_controllable == False]
+    
+    def get_uncontrollable_constraints(self) -> list[Constraint]:
+        """
+        returns a list of requirement constraints that contain an uncontrollable time-point
+        """
+        self.set_controllability_of_time_points()
+        uncontrollable_constraints = []
+        for constraint in self.constraints:
+            if constraint.source.is_controllable() == False or constraint.sink.is_controllable() == False:
+                uncontrollable_constraints.append(constraint)
+    
+
+
+
+
+
+    
