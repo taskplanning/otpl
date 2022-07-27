@@ -299,9 +299,6 @@ class PlanTemporalNetwork:
             # move time forwards
             current_happening_index += 1
 
-        # find remaining tils
-        tils = [ til.copy() for til in problem.timed_initial_literals if til.time > current_state.time ]
-
         # create new tils for currently executing actions
         for happening_id in current_actions:
             time = self.happenings[happening_id+1].time
