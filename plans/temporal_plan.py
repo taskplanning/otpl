@@ -300,6 +300,7 @@ class PlanTemporalNetwork:
             current_happening_index += 1
 
         # create new tils for currently executing actions
+        tils = [ ]
         for happening_id in current_actions:
             time = self.happenings[happening_id+1].time
             action = problem.grounding.get_action_from_id(self.happenings[happening_id].action_id)
