@@ -1,6 +1,5 @@
 import argparse
 import sys
-from typing import Tuple
 from antlr4 import CommonTokenStream, FileStream
 from pddl.grammar.pddl22Lexer import pddl22Lexer
 from pddl.grammar.pddl22Parser import pddl22Parser
@@ -44,7 +43,7 @@ class Parser(pddl22Visitor):
     # parsing access functions #
     #==========================#
 
-    def parse_files(self, domain : str, problem : str) -> Tuple[Domain, Problem]:
+    def parse_files(self, domain : str, problem : str) -> tuple[Domain, Problem]:
         """Parse and return a PDDL domain and problem from file.
 
         Args:
@@ -52,7 +51,7 @@ class Parser(pddl22Visitor):
             problem (str):  Path to problem file.
 
         Returns:
-            Tuple[Domain, Problem]: Parsed result as python objects.
+            tuple[Domain, Problem]: Parsed result as python objects.
         """
         return self.parse_domain_file(domain), self.parse_problem_file(problem)
 

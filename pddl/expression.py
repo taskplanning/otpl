@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import List
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 
 class ExprBase:
@@ -85,7 +84,7 @@ class ExprComposite:
     Stores a list of ExprBase in prefix notation.
     """
 
-    def __init__(self, tokens : List[ExprBase]) -> None:
+    def __init__(self, tokens : list[ExprBase]) -> None:
         self.tokens = tokens
 
     def __repr__(self) -> str:

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Union
+from typing import Union
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.goal_descriptor_inequality import Inequality
 from pddl.time_spec import TimeSpec
@@ -79,7 +79,7 @@ class DurationConjunction(Duration):
     """
     Duration such as (and duration_constraint duration_constraint ...)
     """
-    def __init__(self, constraints : List[Union[DurationInequality,DurationTimed]] = []) -> None:
+    def __init__(self, constraints : list[Union[DurationInequality,DurationTimed]] = []) -> None:
         super().__init__(DurationType.CONJUNCTION)
         self.constraints = constraints
 

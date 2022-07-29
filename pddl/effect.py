@@ -2,7 +2,6 @@
 This file defines and implements the basic effects for PDDL2.2.
 The implementation of assignment goals is implemented in DomainAssignment.
 """
-from typing import List, Union
 from enum import Enum
 from pddl.goal_descriptor import GoalDescriptor
 from pddl.expression import ExprComposite
@@ -49,7 +48,7 @@ class Effect:
 
 class EffectConjunction(Effect):
 
-    def __init__(self, effects : List[Effect]) -> None:
+    def __init__(self, effects : list[Effect]) -> None:
         super().__init__(effect_type=EffectType.CONJUNCTION)
         self.effects = effects
 
@@ -72,7 +71,7 @@ class EffectConjunction(Effect):
 class EffectForall(Effect):
 
     def __init__(self, 
-            typed_parameters : List[TypedParameter],
+            typed_parameters : list[TypedParameter],
             effect : Effect,
             ) -> None:
         super().__init__(effect_type=EffectType.FORALL)
