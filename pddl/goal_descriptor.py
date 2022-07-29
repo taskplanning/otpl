@@ -9,8 +9,8 @@ from pddl.time_spec import TimeSpec
 
 class GoalType(Enum):
     EMPTY       = "empty"
-    SIMPLE      = "conjunction"
-    CONJUNCTION = "inequality"
+    SIMPLE      = "simple"
+    CONJUNCTION = "conjunction"
     DISJUNCTION = "disjunction"
     NEGATIVE    = "negative"
     IMPLICATION = "implication"

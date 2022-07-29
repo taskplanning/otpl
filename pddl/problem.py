@@ -147,9 +147,9 @@ class Problem:
         param params: list of parameter values.
         """
         if predicate_name not in self.domain.predicates:
-            raise Exception("Predicate {.s} does not exist.".format(predicate_name))
+            raise Exception("Predicate {} does not exist.".format(predicate_name))
         if len(self.domain.predicates[predicate_name].typed_parameters) != len(params):
-            raise Exception("Proposition {.s} has wrong number of parameters.".format(predicate_name))
+            raise Exception("Proposition {} has wrong number of parameters.".format(predicate_name))
         typed_params = []
         for param, value in zip(self.domain.predicates[predicate_name].typed_parameters, params):
             typed_params.append(TypedParameter(param.type, param.label,value))
@@ -180,9 +180,9 @@ class Problem:
         param negative: True if the TIL is negative.
         """
         if predicate_name not in self.domain.predicates:
-            raise Exception("Predicate {.s} does not exist.".format(predicate_name))
+            raise Exception("Predicate {} does not exist.".format(predicate_name))
         if len(self.domain.predicates[predicate_name].typed_parameters) != len(params):
-            raise Exception("Proposition {.s} has wrong number of parameters.".format(predicate_name))
+            raise Exception("Proposition {} has wrong number of parameters.".format(predicate_name))
         typed_params = []
         for param, value in zip(self.domain.predicates[predicate_name].typed_parameters, params):
             typed_params.append(TypedParameter(param.type, param.label,value))
@@ -205,9 +205,9 @@ class Problem:
         param params: list of parameter values.
         """
         if function_name not in self.domain.functions:
-            raise Exception("Function {.s} does not exist.".format(function_name))
+            raise Exception("Function {} does not exist.".format(function_name))
         if len(self.domain.functions[function_name].typed_parameters) != len(params):
-            raise Exception("Function {.s} has wrong number of parameters.".format(function_name))
+            raise Exception("Function {} has wrong number of parameters.".format(function_name))
         typed_params = []
         for param, value in zip(self.domain.functions[function_name].typed_parameters, params):
             typed_params.append(TypedParameter(param.type, param.label,value))
@@ -240,9 +240,9 @@ class Problem:
         param values: list of parameter values.
         """
         if predicate_name not in self.domain.predicates:
-            raise Exception("Predicate {.s} does not exist.".format(predicate_name))
+            raise Exception("Predicate {} does not exist.".format(predicate_name))
         if len(self.domain.predicates[predicate_name].typed_parameters) != len(params):
-            raise Exception("Proposition {.s} has wrong number of parameters.".format(predicate_name))
+            raise Exception("Proposition {} has wrong number of parameters.".format(predicate_name))
         typed_params = []
         for param, value in zip(self.domain.predicates[predicate_name].typed_parameters, params):
             typed_params.append(TypedParameter(param.type, param.label,value))

@@ -1,5 +1,3 @@
-from typing import List
-
 class TypedParameter:
     def __init__(self, type : str, label : str, value : str = None) -> None:
         self.type = type
@@ -11,7 +9,7 @@ class AtomicFormula:
     A class used to represent an atomic formula from the domain.
     """
     
-    def __init__(self, name : str, typed_parameters : List[TypedParameter] = None) -> None:
+    def __init__(self, name : str, typed_parameters : list[TypedParameter] = None) -> None:
         self.name = name
         self.typed_parameters : list[TypedParameter] = typed_parameters if typed_parameters else []
 
@@ -49,7 +47,7 @@ class AtomicFormula:
             + (' ' if self.typed_parameters else '') \
             + ' '.join([
                 (p.value if p.value else p.label) \
-                + (" - " + p.type if include_types and not p.value else '') \
+                + (" - " + p.type if include_types and not p.value and not p.type=="object" else '') \
                 for p in self.typed_parameters]) + ")"
 
     def __repr__(self):

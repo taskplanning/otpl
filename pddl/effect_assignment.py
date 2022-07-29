@@ -24,9 +24,6 @@ class Assignment(Effect):
         self.assign_type = assign_type
         self.lhs = lhs
         self.rhs = rhs
-        # catch possible mismatch between LHS/RHS groundedness
-        # TODO switch to method that can be handled by ExprComposite
-        # assert(lhs.grounded == rhs.grounded)
 
     def __repr__(self) -> str:
         if self.assign_type == AssignmentType.INCREASE_CTS:

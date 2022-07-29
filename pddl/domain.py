@@ -1,4 +1,3 @@
-from typing import Dict, List
 from pddl.derived_predicate import DerivedPredicate
 from pddl.domain_type import DomainType
 from pddl.operator import Operator
@@ -10,21 +9,21 @@ class Domain:
     A class that describes a PDDL domain model, including:
     - *requirements* as a list of strings.
     - *type heirarchy* as a list of pddl.domain_type.DomainType.
-    - *constants* as two dicts mapping: (a) object name to type (str->str) (b) type to object names (str->List[str]).
+    - *constants* as two dicts mapping: (a) object name to type (str->str) (b) type to object names (str->list[str]).
     - *predicates* & *functions* both as a list of pddl.domain_formula.DomainFormula.
     - *operators* as a list of pddl.domain_operator.DomainOperator.
     """
 
     def __init__(self, domain_name : str) -> None:
         self.domain_name = domain_name    
-        self.requirements : List[str] = []
-        self.type_tree : Dict[str, DomainType] = {}
-        self.constants_type_map : Dict[str,str] = {}
-        self.type_constants_map : Dict[str,List[str]] = {}
-        self.predicates : Dict[str, AtomicFormula] = {}
-        self.functions : Dict[str, AtomicFormula] = {}
-        self.operators : Dict[str,Operator] = {}
-        self.derived_predicates : List[DerivedPredicate] = []
+        self.requirements : list[str] = []
+        self.type_tree : dict[str, DomainType] = {}
+        self.constants_type_map : dict[str,str] = {}
+        self.type_constants_map : dict[str,list[str]] = {}
+        self.predicates : dict[str, AtomicFormula] = {}
+        self.functions : dict[str, AtomicFormula] = {}
+        self.operators : dict[str,Operator] = {}
+        self.derived_predicates : list[DerivedPredicate] = []
 
     # ======= #
     # cloning #
