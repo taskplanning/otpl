@@ -4,6 +4,3 @@ __pycache__
 # antlr files for generating grammar
 antlr-4.9-complete.jar
 .antlr
-test.json
-test.py
-problems/
