@@ -1,6 +1,8 @@
 from examples.create_temporal_domain import create_temporal_domain
 from pddl.atomic_formula import TypedParameter
 from pddl.domain import Domain
+from pddl.effect import EffectForall
+from pddl.goal_descriptor import GoalConjunction, GoalQuantified, GoalSimple, GoalType
 from pddl.operator import Operator
 
 def normalise_domain(dom : Domain) -> None:
@@ -15,7 +17,7 @@ def normalise_domain(dom : Domain) -> None:
     dom.type_constants_map = { "object" : [ constant for constant in dom.constants_type_map.keys() ] }
 
     # remove types from operators
-    dom.visit(normalise, (TypedParameter,Operator))
+    dom.visit(normalise, (TypedParameter,Operator,GoalQuantified,EffectForall))
 
 def normalise(element) -> None:
     """
@@ -27,7 +29,15 @@ def normalise(element) -> None:
     elif isinstance(element, Operator):
         for parameter in element.formula.typed_parameters:
             if parameter.type != "object":
-                element.add_simple_condition_from_str(parameter.type, { "?o": parameter.label } )
+                element.add_simple_condition_from_str(parameter.type, { "?o": parameter.label } ) 
+    elif isinstance(element, GoalQuantified):
+        if element.goal.goal_type != GoalType.CONJUNCTION:
+            element.goal = GoalConjunction([element.goal])
+        for parameter in element.typed_parameters:
+            if parameter.type != "object":
+                element.goal.goals.append(GoalSimple(parameter.type, { "?o": parameter.label } ))
+    elif isinstance(element, EffectForall):
+        raise NotImplementedError("Normalising Forall effects is not yet implemented.")
 
 if __name__ == "__main__":
 
