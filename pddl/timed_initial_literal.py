@@ -40,3 +40,8 @@ class TimedInitialLiteral:
 
     def copy(self) -> "TimedInitialLiteral":
         return TimedInitialLiteral(self.time, self.effect.copy())
+
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+        if valid_types is None or isinstance(self, valid_types):
+            visit_function(self)
+        self.effect.visit(visit_function, valid_types)

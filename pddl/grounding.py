@@ -57,11 +57,15 @@ class Grounding:
         self.statics = {}
         self.static_offset = 0
 
+        # mutexes
+        self.action_mutexes = None
+        self.proposition_mutexes = None
+
     #======================#
     # Setting heads values #
     #======================#
 
-    def ground_problem(self, domain : Domain, problem : 'Problem'):
+    def ground_problem(self, domain : Domain, problem):
 
         if self.grounded:
             return
@@ -89,7 +93,7 @@ class Grounding:
         self.ground_symbol_list(self.operator_table, op_formulae, self.operator_heads)
         self.action_count = self.last_symbol_count
 
-    def prepare_symbol_tables(self, domain : Domain, problem : 'Problem'):
+    def prepare_symbol_tables(self, domain : Domain, problem):
         # create symbol tables for predicates, ordering statics first
         for name, _ in domain.predicates.items():
             if self.statics[name]:
@@ -118,7 +122,7 @@ class Grounding:
         if obj_type in self.domain.type_tree:
             self.update_type_symbol_table(obj_name, self.domain.type_tree[obj_type].parent)
 
-    def ground_object_list(self, domain : Domain, problem : 'Problem'):
+    def ground_object_list(self, problem):
         self.type_counts["object"] = len(problem.objects_type_map) + len(self.domain.constants_type_map)
         for type in self.domain.type_tree.keys():
             self.type_counts[type] = len(self.type_symbol_tables[type].symbol_list)
@@ -212,9 +216,9 @@ class Grounding:
             ground_parameters.append(TypedParameter(param.type, param.label, value))
         return ground_parameters
 
-    #==================#
-    # statics analysis #
-    #==================#
+    # ======== #
+    # analysis #
+    # ======== #
 
     def check_static_predicates(self):
         self.statics = {p : True for p in self.domain.predicates.keys()}
@@ -237,6 +241,46 @@ class Grounding:
              effect.effect_type == EffectType.NEGATIVE:
             return predicate == effect.formula.name
         return False   
+
+    def compute_action_mutexes(self, actions : np.ndarray):
+        """
+        Compute mutexes for selected actions through brute force.
+        TODO replace this with fast/graphplan implementation.
+        param actions: array of type bool indicating which action IDs to check, e.g. only reachable actions.
+        """
+        self.action_mutexes = np.zeros((self.action_count,self.action_count), dtype=bool)
+        for action_id in np.nonzero(actions)[0]:
+            action = self.get_action_from_id(action_id)
+            for other_id in np.nonzero(actions)[0]:
+                if other_id <= action_id: continue
+                other = self.get_action_from_id(other_id)
+                if self.check_actions_mutex(action, other):
+                    self.action_mutexes[action_id, other_id] = True
+                    self.action_mutexes[other_id, action_id] = True
+
+    def check_actions_mutex(self, action : Operator, other : Operator) -> bool:
+        """
+        Check interference between two actions. Actions interfere if they have conflicting effects, 
+        of one action affects the other's preconditions.
+        """
+        # interference between effects
+        oth_add_effect, oth_del_effect = self.get_simple_action_effect(other)
+        act_add_effect, act_del_effect = self.get_simple_action_effect(action)
+        if np.any(np.logical_and(act_add_effect, oth_del_effect)): return True
+        if np.any(np.logical_and(act_del_effect, oth_add_effect)): return True
+
+        # interference with action precondition
+        act_pos_condition, act_neg_condition = self.get_simple_action_condition(action)
+        if np.any(np.logical_and(act_pos_condition, oth_del_effect)): return True
+        if np.any(np.logical_and(act_neg_condition, oth_add_effect)): return True
+
+        # interference with other precondition
+        oth_pos_condition, oth_neg_condition = self.get_simple_action_condition(other)
+        if np.any(np.logical_and(oth_pos_condition, act_del_effect)): return True
+        if np.any(np.logical_and(oth_neg_condition, act_add_effect)): return True
+
+        return False
+
 
     # ======================================== #
     # get propositional conditions and effects #

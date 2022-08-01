@@ -32,6 +32,15 @@ class Duration:
         """
         return Duration(self.duration_type)
 
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+        """
+        Calls the visit function on self and recurses through the visit methods of members.
+        param visit_function: the function to call on self.
+        param valid_types: a set of types to visit. If None, all types are visited.
+        """
+        if valid_types is None or isinstance(self, valid_types):
+            visit_function(self)
+
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Duration':
         """
         Binds the parameters of a copy of the duration to the given list of parameters.
@@ -53,6 +62,11 @@ class DurationInequality(Duration):
     def copy(self) -> 'Duration':
         return DurationInequality(self.ineq.copy())
 
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+        if valid_types is None or isinstance(self, valid_types):
+            visit_function(self)
+        self.ineq.visit(visit_function, valid_types)
+
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Duration':
         return DurationInequality(self.ineq.bind_parameters(parameters))
 
@@ -72,6 +86,11 @@ class DurationTimed(Duration):
     def copy(self) -> 'Duration':
         return DurationTimed(self.time_spec, self.ineq.copy())
 
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+        if valid_types is None or isinstance(self, valid_types):
+            visit_function(self)
+        self.ineq.visit(visit_function, valid_types)
+
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Duration':
         return DurationTimed(self.time_spec, self.ineq.bind_parameters(parameters))
 
@@ -88,6 +107,12 @@ class DurationConjunction(Duration):
 
     def copy(self) -> 'Duration':
         return DurationConjunction(self.constraints)
+
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+        if valid_types is None or isinstance(self, valid_types):
+            visit_function(self)
+        for constraint in self.constraints:
+            constraint.visit(visit_function, valid_types)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Duration':
         bound_contraints = [ dur.bind_parameters(parameters) for dur in self.constraints ]

@@ -38,6 +38,11 @@ class Assignment(Effect):
         """
         return Assignment(self.assign_type, self.lhs.copy(), self.rhs.copy())
 
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+        if valid_types is None or isinstance(self, valid_types):
+            visit_function(self)
+        
+
     def bind_parameters(self, parameters: list[TypedParameter]) -> 'Effect':
         """
         Binds the parameters of the effect to the given parameters.

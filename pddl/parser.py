@@ -186,7 +186,7 @@ class Parser(pddl22Visitor):
     def visitAtomic_formula(self, ctx:pddl22Parser.Atomic_formulaContext):
         # TODO need a name and variable lookup table to get types
         name = ctx.name().getText()
-        typed_parameters=self.visit(ctx.term_list())
+        typed_parameters = self.visit(ctx.term_list())
         if name in self.domain.predicates:
             for domain_param, param in zip(self.domain.predicates[name].typed_parameters, typed_parameters):
                 param.type = domain_param.type

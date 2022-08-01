@@ -42,6 +42,24 @@ class Operator:
             effect=self.effect.copy()
         )
 
+    # ======== #
+    # visiting #
+    # ======== #
+
+    def visit(self, visit_function : callable, valid_types : set[type] = None):
+        """
+        Calls the visit function on self and recurses through the visit methods of members.
+        param visit_function: the function to call on self.
+        param valid_types: a set of types to visit. If None, all types are visited.
+        """
+        if valid_types is None or type(self) in valid_types:
+            visit_function(self)
+
+        self.formula.visit(visit_function, valid_types)
+        self.duration.visit(visit_function, valid_types)
+        self.condition.visit(visit_function, valid_types)
+        self.effect.visit(visit_function, valid_types)
+        
     # ======= #
     # setters #
     # ======= #

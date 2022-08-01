@@ -57,6 +57,35 @@ class Domain:
 
         return clone
 
+    # ======== #
+    # visiting #
+    # ======== #
+
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None):
+        """
+        Calls the visit function on self and recurses through the
+        visit methods of members.
+        param visit_function: the function to call on self.
+        param valid_types: a set of types to visit. If None, all types are visited.
+        """
+        if valid_types is None or isinstance(self, valid_types):
+            visit_function(self)
+
+        for type in self.type_tree.values():
+            type.visit(visit_function, valid_types)
+        
+        for predicate in self.predicates.values():
+            predicate.visit(visit_function, valid_types)
+
+        for function in self.functions.values():
+            function.visit(visit_function, valid_types)
+
+        for operator in self.operators.values():
+            operator.visit(visit_function, valid_types)
+
+        for derived_predicate in self.derived_predicates:
+            derived_predicate.visit(visit_function, valid_types)        
+
     # ======= #
     # setters #
     # ======= #

@@ -122,6 +122,34 @@ class Problem:
         clone.update_with_state(state)
         return clone
 
+    # ======== #
+    # visiting #
+    # ======== #
+
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None):
+        """
+        Calls the visit function on self and recurses through the visit methods of members.
+        param visit_function: the function to call on self.
+        param valid_types: a set of types to visit. If None, all types are visited.
+        """
+        if valid_types is None or isinstance(self, valid_types):
+            visit_function(self)
+        
+        for prop in self.propositions:
+            prop.visit(visit_function, valid_types)
+        
+        for val,func in self.functions:
+            func.visit(visit_function, valid_types)
+        
+        for til in self.timed_initial_literals:
+            til.visit(visit_function, valid_types)
+        
+        if self.goal:
+            self.goal.visit(visit_function, valid_types)
+
+        if self.metric:
+            self.metric.visit(visit_function, valid_types)
+
     # ======= #
     # setters #
     # ======= #
