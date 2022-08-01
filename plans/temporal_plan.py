@@ -277,7 +277,7 @@ class PlanTemporalNetwork:
 
         while current_happening_index < len(self.time_sorted_happenings):
 
-            # move to next happening
+            # move time forwards
             happening = self.time_sorted_happenings[current_happening_index]
             if until_time < happening.time:
                 current_state.time = until_time
@@ -296,7 +296,7 @@ class PlanTemporalNetwork:
                 problem.grounding.apply_simple_action_effects(happening.action_id, current_state, time_spec=TimeSpec.AT_END)
                 current_actions.remove(happening.id - 1)
 
-            # move time forwards
+            # move to next happening
             current_happening_index += 1
 
         # create new tils for currently executing actions

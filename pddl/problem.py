@@ -49,8 +49,7 @@ class Problem:
     # ========= #
 
     def ground(self):
-        self.grounding.ground_problem(self, self.domain)
-
+        self.grounding.ground_problem(self.domain, self)
 
     # ====== #
     # states #
