@@ -1,5 +1,5 @@
 from examples.create_temporal_problem import create_temporal_problem
-from examples.normalise_domain import normalise
+from examples.remove_types_from_domain import normalise
 from pddl.atomic_formula import TypedParameter
 from pddl.domain_type import DomainType
 from pddl.operator import Operator
