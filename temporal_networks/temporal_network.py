@@ -15,21 +15,6 @@ class TimePoint:
         self.id = id
         self.label = label
         self.controllable = controllable
-
-    def set_controllable(self, logic: bool):
-        """
-        sets controllable logic of the time-point
-        """
-        self.controllable = logic
-    
-    def is_controllable(self) -> bool:
-        """
-        returns True if time-point is controllable, else False
-        """
-        if self.controllable == True:
-            return True
-        else:
-            return False
     
     def copy(self):
         """
@@ -44,7 +29,7 @@ class TimePoint:
         """
         return "Time-point {}".format(self.id)
     
-    def for_json(self) -> str:
+    def to_json(self) -> str:
         """
         prints the time-point as a dictionary for use with json
         """
@@ -60,9 +45,10 @@ class Constraint:
         self.sink = sink
         assert type in ("stc, pstc"), "Invalid Constraint type, type must be 'stc' for simple temporal constraint, 'stcu' for simple temporal constraint with uncertainty or 'pstc' for probabilistic simple temporal constraint"
         self.type = type
-        assert duration_bound.keys() == ["lb", "ub"],  "Duration_bound should be in the form {'lb: float, 'ub': float}"
+        assert list(duration_bound.keys()) == ["lb", "ub"],  "Duration_bound should be in the form {'lb: float, 'ub': float}"
         self.duration_bound = duration_bound
-        assert distribution.keys() == ["mean", "sd"],  "Distribution should be in the form {'mean': float, 'sd': float}"
+        if distribution != None:
+            assert list(distribution.keys()) == ["mean", "sd"],  "Distribution should be in the form {'mean': float, 'sd': float}"
         self.distribution = distribution
         
     def get_description(self) -> str:
@@ -103,7 +89,7 @@ class Constraint:
         elif self.type == "pstc":
             return self.get_description() + ": " + "N({}, {})".format(self.distribution["mean"], self.distribution["variance"])
 
-    def for_json(self) -> dict:
+    def to_json(self) -> dict:
         """
         returns the constraint as a dictionary for use with json
         """
@@ -138,8 +124,8 @@ class TemporalNetwork:
     """
     represents a simple temporal network as a graph.
     """
-    def __init__(self, name: str) -> None:
-        self.name = name
+    def __init__(self) -> None:
+        self.name = None
         self.time_points : list[TimePoint] = []
         self.constraints: list[Constraint] = []
     
@@ -150,7 +136,16 @@ class TemporalNetwork:
         """
         add a time-point (node) to the network.
         """
+        for t in self.time_points:
+            if t.id == time_point.id:
+                raise ValueError("Time-point already exists in network with that ID. Try changing ID of new time-point so that it is unique.")
         self.time_points.append(time_point)
+    
+    def add_name(self, name: str) -> None:
+        """
+        adds a string name to the network.
+        """
+        self.name = name
 
     def add_constraint(self, constraint: Constraint) -> None:
         """
@@ -188,30 +183,52 @@ class TemporalNetwork:
         # Initialises adj matrix using edges explicit in self.constraints
         for constraint in self.constraints:
             # If source not in adj matrix yet, add it
-            if str(constraint.source.id) not in adj:
-                adj[str(constraint.source.id)] = {}
+            if constraint.source.id not in adj:
+                adj[constraint.source.id] = {}
             # If sink not in adj matrix yet, add it
-            if str(constraint.sink.id) not in adj:
-                adj[str(constraint.sink.id)] = {}
+            if constraint.sink.id not in adj:
+                adj[constraint.sink.id] = {}
             # If source[sink] not in adj matrix yet, add it.
-            if str(constraint.sink.id) not in adj[str(constraint.source.id)]:
-                adj[str(constraint.source.id)][str(constraint.sink.id)] = constraint.ub
+            if constraint.sink.id not in adj[constraint.source.id]:
+                adj[constraint.source.id][constraint.sink.id] = constraint.ub
             # If sink[source] not in adj matrix yet, add it
-            if str(constraint.source.id) not in adj[str(constraint.sink.id)]:
-                adj[str(constraint.sink.id)][str(constraint.source.id)] = -constraint.lb
+            if constraint.source.id not in adj[constraint.sink.id]:
+                adj[constraint.sink.id][constraint.source.id] = -constraint.lb
         
         # Adds self edges to be equal to zero and initialises missing edges to be infinity
         for node1 in self.time_points:
-            if str(node1.id) not in adj:
-                adj[str(node1.id)] = {}
+            if node1.id not in adj:
+                adj[node1.id] = {}
             for node2 in self.time_points:
                 if node1 == node2:
-                    adj[str(node1.id)][str(node2.id)] = 0
-                elif str(node2.id) not in adj[str(node1.id)]:
-                    adj[str(node1.id)][str(node2.id)] = inf
+                    adj[node1.id][node2.id] = 0
+                elif node2.id not in adj[node1.id]:
+                    adj[node1.id][node2.id] = inf
         return adj
+    
+    def get_bidirectional_network(self) -> dict[TimePoint, dict]:
+        """
+        Gets the bidirectional version of the temporal network, i.e. converts from l12 <= b2 - b1 <= u12 to b2 - b1 <= u12, b1 - b2 <= -l12
+        As above but does not consider all pairs.
+        """
+        network = {}
+        for constraint in self.constraints:
+            # If source not in adj matrix yet, add it
+            if constraint.source.id not in network:
+                network[constraint.source.id] = {}
+            # If sink not in adj matrix yet, add it
+            if constraint.sink.id not in network:
+                network[constraint.sink.id] = {}
+            # If source[sink] not in adj matrix yet, add it.
+            if constraint.sink.id not in network[constraint.source.id]:
+                network[constraint.source.id][constraint.sink.id] = constraint.ub
+            # If sink[source] not in adj matrix yet, add it
+            if constraint.source.id not in network[constraint.sink.id]:
+                network[constraint.sink.id][constraint.source.id] = -constraint.lb
+        return network
 
-    def floyd_warshall(self) -> tuple(dict[TimePoint], bool):
+
+    def floyd_warshall(self) -> tuple[dict[TimePoint, dict], bool]:
         """
         use Floyd-Warshall to put the graph in all-pairs shortest path form.
         returns tuple (APSP dictionary, boolean) where the boolean is True if the network is consistent (i.e. no negative cycles).
@@ -233,8 +250,9 @@ class TemporalNetwork:
         find the shortest path using dijkstras search
         """
         # Needs updated
-        distances = dict.fromkeys(self.nodes, float("inf"))
-        distances[source] = 0
+        network = self.get_bidirectional_network()
+        distances = dict.fromkeys([i.id for i in self.time_points], float("inf"))
+        distances[source.id] = 0
         queue = PriorityQueue()
         visited = set()
         queue.put((0, source))
@@ -243,11 +261,11 @@ class TemporalNetwork:
             if node == sink: return distance
             if node in visited: continue
             visited.add(node)
-            if node not in self.edges: continue
-            for neighbor in self.edges[node]:
+            if node not in network: continue
+            for neighbor in network[node]:
                 if neighbor in visited: continue
-                if distances[node] + self.edges[node][neighbor] < distances[neighbor]:
-                    distances[neighbor] = distances[node] + self.edges[node][neighbor]
+                if distances[node] + network[node][neighbor] < distances[neighbor]:
+                    distances[neighbor] = distances[node] + network[node][neighbor]
                     queue.put((distances[neighbor], neighbor))
         return float("inf")
 
@@ -303,6 +321,17 @@ class TemporalNetwork:
                 return constraint
             else:
                 return None
+
+    def get_timepoint_by_id(self, id: int) -> TimePoint:
+        """
+        given an id, it returns the time-point if it exists in self.timepoints
+        """
+        found = None
+        for time_point in self.time_points:
+            if time_point.id == id:
+                found = time_point
+        return found
+            
                         
     def print_dot_graph(self):
         """
@@ -328,7 +357,7 @@ class TemporalNetwork:
         print("\t],")
         print("\t\"constraints\": [")
         for constraint in self.constraints:
-            print("\t\t{\"source\": " + str(constraint.source.id) + ", \"target\": " + str(constraint.sink.id) + ", \"label\": \"" + "({}.{})".format(constraint.lb, constraint.ub) + "\"},")
+            print("\t\t{\"source\": " + str(constraint.source.id) + ", \"target\": " + str(constraint.sink.id) + ", \"label\": \"" + "({}, {})".format(constraint.lb, constraint.ub) + "\"},")
         print("\t]")
         print("}")
     
@@ -337,8 +366,8 @@ class TemporalNetwork:
         saves the network as a JSON to filename.json
         """
         toDump = {}
-        toDump["timepoints"] = [t.for_json() for t in self.time_points]
-        toDump["constraints"] = [c.for_json() for c in self.constraints]
+        toDump["timepoints"] = [t.to_json() for t in self.time_points]
+        toDump["constraints"] = [c.to_json() for c in self.constraints]
         with open("{}.json".format(filename), 'w') as fp:
             json.dump(toDump, fp)
 
@@ -425,9 +454,26 @@ class ProbabilisticTemporalNetwork(TemporalNetwork):
             if constraint.source.is_controllable() == False or constraint.sink.is_controllable() == False:
                 uncontrollable_constraints.append(constraint)
     
-
-
-
+    def incoming_probabilistic(self, constraint) -> dict[str, Constraint]:
+        """
+        returns a dictionary of the incoming probabilistic constraint in the form {"start": Constraint, "end": Constraint}
+        raises an exception if the number of incoming probabilistic constraints is greater than one
+        """
+        if constraint not in self.get_uncontrollable_constraints():
+            return None
+        else:
+            incoming_source = [g for g in self.getContingents() if g.sink == constraint.source]
+            incoming_sink = [g for g in self.getContingents() if g.sink == constraint.sink]
+            if len(incoming_source) > 1 or len(incoming_sink) > 1:
+                raise AttributeError("More than one incoming probabilistic edge.")
+            else:
+                try:
+                    return {"start": incoming_source[0], "end": incoming_sink[0]}
+                except IndexError:
+                    try:
+                        return {"start": incoming_source[0], "end": None}
+                    except IndexError:
+                        return {"start": None, "end": incoming_sink[0]}
 
 
     

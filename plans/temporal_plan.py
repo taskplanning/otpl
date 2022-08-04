@@ -12,7 +12,8 @@ from pddl.grounding import Grounding
 from pddl.operator import Operator
 from pddl.time_spec import TimeSpec
 from pddl.timed_initial_literal import TimedInitialLiteral
-from temporal_networks.temporal_network import TemporalNetwork
+from temporal_networks.temporal_network import TemporalNetwork, TimePoint, Constraint
+import re
 
 class HappeningType(Enum):
     PLAN_START   = "PLAN_START"
@@ -52,6 +53,7 @@ class PlanTemporalNetwork:
         self.grounding : Grounding = grounding
 
         self.epsilon = 0.01
+        self.infinity = 1000000000
         
         # map temporal network nodes to happenings
         self.temporal_network : TemporalNetwork = None
@@ -71,11 +73,11 @@ class PlanTemporalNetwork:
 
         if not self.grounding.grounded:
             self.grounding.ground_problem(self.domain, self.problem)
-
+        
         self.temporal_network = TemporalNetwork()
 
         # add plan start happening to network
-        self.temporal_network.add_node(0, "PLAN_START")
+        self.temporal_network.add_time_point(TimePoint(0, "PLAN_START"))
         self.happenings = [Happening(0, 0, HappeningType.PLAN_START)]
 
         # add action and TIL nodes to network
@@ -90,60 +92,88 @@ class PlanTemporalNetwork:
         self.construct_ordering_constraints()
 
     def construct_til_nodes(self):
+        # Gets the start node in the temporal network
+        start_tp = self.temporal_network.get_timepoint_by_id(0)
 
         for til in self.problem.timed_initial_literals:
 
             # create node for TIL
             node_id = len(self.happenings)
             til_node = Happening(node_id, til.time, HappeningType.TIMED_INITIAL_LITERAL, til=til)
-            self.temporal_network.add_node(node_id, label="TIL: "+str(til.effect))
+            end_tp = TimePoint(node_id, label="TIL: "+str(til.effect))
+            self.temporal_network.add_time_point(end_tp)
             self.happenings.append(til_node)
 
             # create edge from TIL to plan start
-            self.temporal_network.add_edge(0, node_id, til.time)
-            self.temporal_network.add_edge(node_id, 0, -til.time)
+            self.temporal_network.add_constraint(Constraint("TIL: "+str(til.effect), start_tp, end_tp, "stc", {"lb": til.time, "ub": til.time}))
 
     def parse_actions(self, plan_file):
-        # read actions and create nodes
+        # read actions and create nodesx
+        # Regular expression to match actions from planner output
+        action_str = re.compile("\d+\.\d+:\s+\(.*\)\s+\[\d+\.\d+\]")
+        # Stores the lines containing the plans
+        plans = []
+        # Used to keep track of whether a new plan has been found.
+        new_plan = False
         with open(plan_file, 'r') as f:
             for line in f:
+                match = action_str.findall(line)
+                # If the new plan flag is set to False and we find a match then this means we have
+                # found a new plan. We set it to True and initialise the new plan as an empty list
+                if new_plan == False and match:
+                    new_plan = True
+                    plan = [match[0]]
+                # Adds action to current plan
+                elif match:
+                    plan.append(match[0])
+                # If the new plan flag is set to True and the current line is not a match then we have
+                # got to the end of the plan. We reset the flag to False and add the plan to the list of
+                # plans
+                elif new_plan == True and not match:
+                    new_plan = False
+                    plans.append(plan)
 
-                # parse line
-                time = float(line.split(':')[0])
-                action = line.split(":")[1].split("[")[0].strip()
-                duration = float(line.split("[")[1].split("]")[0])
+        # Sets the plan to the best plan i.e. the last plan in the planner output
+        plan = plans[-1]
+        for line in plan:
+            # parse line
+            time = float(line.split(':')[0])
+            action = line.split(":")[1].split("[")[0].strip()
+            duration = float(line.split("[")[1].split("]")[0])
 
-                # get the action name and parameters
-                tokens = action.replace("(","").replace(")","").split()
-                op = self.domain.operators[tokens[0]]
-                if not op: raise Exception("Action " + action + " not found in domain.")
+            # get the action name and parameters
+            tokens = action.replace("(","").replace(")","").split()
+            op = self.domain.operators[tokens[0]]
+            if not op: raise Exception("Action " + action + " not found in domain.")
 
-                objects = tokens[1:]
-                if len(objects) != len(op.formula.typed_parameters):
-                    raise Exception("Action " + action + " has wrong number of parameters.")
+            objects = tokens[1:]
+            if len(objects) != len(op.formula.typed_parameters):
+                raise Exception("Action " + action + " has wrong number of parameters.")
 
-                # get grounded action ID
-                parameters = []
-                for param, object in zip(op.formula.typed_parameters, objects):
-                    parameters.append(TypedParameter(param.type, param.label, object))
-                formula = AtomicFormula(tokens[0], parameters)
-                action_id = self.grounding.get_id_from_action_formula(formula)
+            # get grounded action ID
+            parameters = []
+            for param, object in zip(op.formula.typed_parameters, objects):
+                parameters.append(TypedParameter(param.type, param.label, object))
+            formula = AtomicFormula(tokens[0], parameters)
+            action_id = self.grounding.get_id_from_action_formula(formula)
                 
-                # action start happening
-                node_id = len(self.happenings)
-                action_start = Happening(node_id, time, HappeningType.ACTION_START, action_id)
-                self.temporal_network.add_node(node_id, label=formula.print_pddl() + "_start")
-                self.happenings.append(action_start)
+            # action start happening
+            node_id = len(self.happenings)
+            action_start = Happening(node_id, time, HappeningType.ACTION_START, action_id)
+            start_tp = TimePoint(node_id, label=formula.print_pddl() + "_start")
+            self.temporal_network.add_time_point(start_tp)
+            self.happenings.append(action_start)
 
-                # action end happening
-                node_id = len(self.happenings)
-                action_end = Happening(node_id, time + duration, HappeningType.ACTION_END, action_id)
-                self.temporal_network.add_node(node_id, label=formula.print_pddl() + "_end")
-                self.happenings.append(action_end)
+            # action end happening
+            node_id = len(self.happenings)
+            action_end = Happening(node_id, time + duration, HappeningType.ACTION_END, action_id)
+            end_tp = TimePoint(node_id, label=formula.print_pddl() + "_end")
+            self.temporal_network.add_time_point(end_tp)
+            self.happenings.append(action_end)
 
-                # create two edges for action duration
-                self.temporal_network.add_edge(node_id - 1, node_id, duration)
-                self.temporal_network.add_edge(node_id, node_id - 1, -duration)
+            # create edge for action duration
+            action_edge = Constraint(formula.print_pddl(), start_tp, end_tp, "stc", {"lb": duration, "ub": duration})
+            self.temporal_network.add_constraint(action_edge)
 
     def construct_ordering_constraints(self):
         """
@@ -189,7 +219,9 @@ class PlanTemporalNetwork:
                 if np.any(pos_support) or np.any(neg_support):
 
                     # add new edge to the temporal network
-                    self.temporal_network.add_edge(happening.id, prev.id, -self.epsilon)
+                    start_tp = self.temporal_network.get_timepoint_by_id(happening.id)
+                    end_tp = self.temporal_network.get_timepoint_by_id(prev.id)
+                    self.temporal_network.add_constraint(Constraint("Ordering Constraint between {} and {}".format(start_tp.id, end_tp.id), start_tp, end_tp, "stc", {"lb": self.epsilon, "ub": self.infinity}))
 
                     # remove the now-supported conditions
                     np.logical_xor(pos, pos_support, out=pos)
@@ -261,6 +293,8 @@ class PlanTemporalNetwork:
                     
                 # add edge to temporal network
                 if source != -1 and sink != -1:
-                    dist = self.temporal_network.find_shortest_path(source, sink)
+                    start_tp = self.temporal_network.get_timepoint_by_id(source)
+                    end_tp = self.temporal_network.get_timepoint_by_id(sink)
+                    dist = self.temporal_network.find_shortest_path(start_tp, end_tp)
                     if -self.epsilon < dist:
-                        self.temporal_network.add_edge(source, sink, distance)
+                        self.temporal_network.add_constraint(Constraint("Interference Constraint between {} and {}".format(start_tp.id, end_tp.id), start_tp, end_tp, "stc", {"lb": self.epsilon, "ub": self.infinity}))
