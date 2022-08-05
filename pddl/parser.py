@@ -658,9 +658,8 @@ if __name__ == "__main__":
         arg_parser.print_help()
         sys.exit(0)
     
+    pddl_parser = Parser()
     for file in args.pddl_file:
-        
-        pddl_parser = Parser()
         pddl_parser.parse_file(file)
         
     if pddl_parser.domain and args.print: print(pddl_parser.domain)
