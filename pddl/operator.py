@@ -52,7 +52,7 @@ class Operator:
         param visit_function: the function to call on self.
         param valid_types: a set of types to visit. If None, all types are visited.
         """
-        if valid_types is None or type(self) in valid_types:
+        if valid_types is None or isinstance(self, valid_types):
             visit_function(self, *args, **kwargs)
 
         self.formula.visit(visit_function, valid_types, args, kwargs)

@@ -60,7 +60,6 @@ class AtomicFormula:
         param visit_function: The function to call.
         param valid_types: A set of types to call the function on. If None, all types are accepted.
         """
-        print(valid_types)
         if valid_types is None or isinstance(self, valid_types):
             visit_function(self, *args, **kwargs)
         for p in self.typed_parameters:
