@@ -217,6 +217,11 @@ assign_operator
 /* durative actions */
 /*------------------*/
 
+time_specifier
+  : AT TIME_SPECIFIER_SUFFIX
+  | OVER_ALL
+  ;
+
 durative_action_def
   : '(:durative-action' name
   ':parameters (' typed_var_list* untyped_var_list? ')' 
@@ -234,7 +239,7 @@ duration_constraint
 
 simple_duration_constraint
   : '(' duration_op '?duration' expression ')' #simple_duration_constraint_simple
-  | '(' 'at' time_specifier simple_duration_constraint ')' #simple_duration_constraint_timed
+  | '(' AT TIME_SPECIFIER_SUFFIX simple_duration_constraint ')' #simple_duration_constraint_timed
   ;
 
 duration_op
@@ -250,18 +255,7 @@ durative_action_goal_descriptor
   ;
 
 timed_goal_descriptor
-  : time_specifier_prefix time_specifier goal_descriptor ')' 
-  ;
-
-time_specifier_prefix
-  : '(' 'at'
-  | '(' 'over'
-  ;
- 
-time_specifier
-  : 'start'
-  | 'end'
-  | 'all'
+  : '(' time_specifier goal_descriptor ')' 
   ;
 
 durative_action_effect
@@ -273,8 +267,8 @@ durative_action_effect
   ;
 
 timed_effect
-  : '(' 'at' time_specifier c_effect ')' #timed_effect_timed
-  | '(' 'at' time_specifier function_assign_durative ')' #timed_effect_assign
+  : '(' AT TIME_SPECIFIER_SUFFIX c_effect ')' #timed_effect_timed
+  | '(' AT TIME_SPECIFIER_SUFFIX function_assign_durative ')' #timed_effect_assign
   | '(' assign_op_t atomic_formula expression_t ')' #timed_effect_continuous
   ;
 
@@ -284,7 +278,7 @@ function_assign_durative
 
 expression_durative
   : '(' binary_operator expression_durative expression_durative ')' #expression_durative_operator
-  | '(-' expression_durative ')' #expression_durative_uminus
+  | '(' '-' expression_durative ')' #expression_durative_uminus
   | '?duration' #expression_durative_duration
   | expression #expression_durative_expression
   ;
@@ -334,7 +328,7 @@ init
 init_element
   : atomic_formula #init_element_simple
   | '(' '=' atomic_formula number ')' #init_element_assign
-  | '(' 'at' number p_effect ')' #init_element_til
+  | '(' AT number p_effect ')' #init_element_til
   ;
 
 goal
@@ -356,6 +350,7 @@ ground_function_expression
   | '(' '-' ground_function_expression ')' #ground_function_expression_uminus
   | '(' name name* ')' #ground_function_expression_function
   | 'total-time' #ground_function_expression_total_time
+  | '(' ground_function_expression ')' #ground_function_expression_parenthesis
   ;
 
 /*-------*/
@@ -366,8 +361,11 @@ variable
   : VARIABLE
   ;
 
-name
+name // allows 'at' as predicate name, etc.
   : NAME
+  | AT 
+  | OVER_ALL
+  | TIME_SPECIFIER_SUFFIX
   ;
 
 number
@@ -375,17 +373,28 @@ number
   ;
 
 VARIABLE
-  : '?' NAME
+  : '?' (NAME | AT | TIME_SPECIFIER_SUFFIX)
   ;
 
+AT
+  : ('at' | 'AT')
+  ;
+
+TIME_SPECIFIER_SUFFIX
+  : ('start' | 'end' | 'END' | 'START')
+  ;
+
+OVER_ALL
+  : ('over' | 'OVER')(' ')+('all' | 'ALL')
+  ;
 
 NAME
   : ('a'..'z' | 'A'..'Z')('a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '-')*
   ;
 
 NUMBER
-  : ('0'..'9')+
-  | ('0'..'9')+ '.' ('0'..'9')+
+  : ('-')?('0'..'9')+
+  | ('-')?('0'..'9')+ '.' ('0'..'9')+
   ;
 
 COMMENT

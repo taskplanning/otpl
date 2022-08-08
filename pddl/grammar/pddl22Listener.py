@@ -1,4 +1,4 @@
-# Generated from pddl22.g4 by ANTLR 4.9
+# Generated from pddl22.g4 by ANTLR 4.10.1
 from antlr4 import *
 if __name__ is not None and "." in __name__:
     from .pddl22Parser import pddl22Parser
@@ -449,6 +449,15 @@ class pddl22Listener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by pddl22Parser#time_specifier.
+    def enterTime_specifier(self, ctx:pddl22Parser.Time_specifierContext):
+        pass
+
+    # Exit a parse tree produced by pddl22Parser#time_specifier.
+    def exitTime_specifier(self, ctx:pddl22Parser.Time_specifierContext):
+        pass
+
+
     # Enter a parse tree produced by pddl22Parser#durative_action_def.
     def enterDurative_action_def(self, ctx:pddl22Parser.Durative_action_defContext):
         pass
@@ -545,24 +554,6 @@ class pddl22Listener(ParseTreeListener):
 
     # Exit a parse tree produced by pddl22Parser#timed_goal_descriptor.
     def exitTimed_goal_descriptor(self, ctx:pddl22Parser.Timed_goal_descriptorContext):
-        pass
-
-
-    # Enter a parse tree produced by pddl22Parser#time_specifier_prefix.
-    def enterTime_specifier_prefix(self, ctx:pddl22Parser.Time_specifier_prefixContext):
-        pass
-
-    # Exit a parse tree produced by pddl22Parser#time_specifier_prefix.
-    def exitTime_specifier_prefix(self, ctx:pddl22Parser.Time_specifier_prefixContext):
-        pass
-
-
-    # Enter a parse tree produced by pddl22Parser#time_specifier.
-    def enterTime_specifier(self, ctx:pddl22Parser.Time_specifierContext):
-        pass
-
-    # Exit a parse tree produced by pddl22Parser#time_specifier.
-    def exitTime_specifier(self, ctx:pddl22Parser.Time_specifierContext):
         pass
 
 
@@ -833,6 +824,15 @@ class pddl22Listener(ParseTreeListener):
 
     # Exit a parse tree produced by pddl22Parser#ground_function_expression_total_time.
     def exitGround_function_expression_total_time(self, ctx:pddl22Parser.Ground_function_expression_total_timeContext):
+        pass
+
+
+    # Enter a parse tree produced by pddl22Parser#ground_function_expression_parenthesis.
+    def enterGround_function_expression_parenthesis(self, ctx:pddl22Parser.Ground_function_expression_parenthesisContext):
+        pass
+
+    # Exit a parse tree produced by pddl22Parser#ground_function_expression_parenthesis.
+    def exitGround_function_expression_parenthesis(self, ctx:pddl22Parser.Ground_function_expression_parenthesisContext):
         pass
 
 

@@ -1,4 +1,4 @@
-# Generated from pddl22.g4 by ANTLR 4.9
+# Generated from pddl22.g4 by ANTLR 4.10.1
 from antlr4 import *
 if __name__ is not None and "." in __name__:
     from .pddl22Parser import pddl22Parser
@@ -254,6 +254,11 @@ class pddl22Visitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by pddl22Parser#time_specifier.
+    def visitTime_specifier(self, ctx:pddl22Parser.Time_specifierContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by pddl22Parser#durative_action_def.
     def visitDurative_action_def(self, ctx:pddl22Parser.Durative_action_defContext):
         return self.visitChildren(ctx)
@@ -306,16 +311,6 @@ class pddl22Visitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by pddl22Parser#timed_goal_descriptor.
     def visitTimed_goal_descriptor(self, ctx:pddl22Parser.Timed_goal_descriptorContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by pddl22Parser#time_specifier_prefix.
-    def visitTime_specifier_prefix(self, ctx:pddl22Parser.Time_specifier_prefixContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by pddl22Parser#time_specifier.
-    def visitTime_specifier(self, ctx:pddl22Parser.Time_specifierContext):
         return self.visitChildren(ctx)
 
 
@@ -466,6 +461,11 @@ class pddl22Visitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by pddl22Parser#ground_function_expression_total_time.
     def visitGround_function_expression_total_time(self, ctx:pddl22Parser.Ground_function_expression_total_timeContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by pddl22Parser#ground_function_expression_parenthesis.
+    def visitGround_function_expression_parenthesis(self, ctx:pddl22Parser.Ground_function_expression_parenthesisContext):
         return self.visitChildren(ctx)
 
 
