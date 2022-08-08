@@ -126,29 +126,29 @@ class Problem:
     # visiting #
     # ======== #
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None):
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}):
         """
         Calls the visit function on self and recurses through the visit methods of members.
         param visit_function: the function to call on self.
         param valid_types: a set of types to visit. If None, all types are visited.
         """
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
+            visit_function(self, *args, **kwargs)
         
         for prop in self.propositions:
-            prop.visit(visit_function, valid_types)
+            prop.visit(visit_function, valid_types, args, kwargs)
         
         for val,func in self.functions:
-            func.visit(visit_function, valid_types)
+            func.visit(visit_function, valid_types, args, kwargs)
         
         for til in self.timed_initial_literals:
-            til.visit(visit_function, valid_types)
+            til.visit(visit_function, valid_types, args, kwargs)
         
         if self.goal:
-            self.goal.visit(visit_function, valid_types)
+            self.goal.visit(visit_function, valid_types, args, kwargs)
 
         if self.metric:
-            self.metric.visit(visit_function, valid_types)
+            self.metric.visit(visit_function, valid_types, args, kwargs)
 
     # ======= #
     # setters #

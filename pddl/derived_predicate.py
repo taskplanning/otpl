@@ -18,17 +18,17 @@ class DerivedPredicate:
     # visiting #
     # ======== #
 
-    def visit(self, visit_function: callable, valid_types: tuple[type] = None):
+    def visit(self, visit_function: callable, valid_types: tuple[type] = None, args=(), kwargs={}):
         """
         Calls the visit function on self, and recurses through the visit methods of members.
         param visit_function: the function to call on self.
         param valid_types: a set of types to visit. If None, all types are visited.
         """
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
+            visit_function(self, *args, **kwargs)
 
-        self.condition.visit(visit_function, valid_types)
-        self.predicate.visit(visit_function, valid_types)
+        self.condition.visit(visit_function, valid_types, args, kwargs)
+        self.predicate.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters: list[TypedParameter]) -> 'DerivedPredicate':
         """

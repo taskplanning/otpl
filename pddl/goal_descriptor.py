@@ -37,14 +37,14 @@ class GoalDescriptor:
         """
         return GoalDescriptor()
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         """
         Calls the visit function on self and recurses through the visit methods of members.
         param visit_function: the function to call on self.
         param valid_types: a set of types to visit. If None, all types are visited.
         """
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
+            visit_function(self, *args, **kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
         """
@@ -70,10 +70,10 @@ class GoalSimple(GoalDescriptor):
     def copy(self) -> 'GoalDescriptor':
         return GoalSimple(self.atomic_formula.copy())
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
-        self.atomic_formula.visit(visit_function, valid_types)
+            visit_function(self, *args, **kwargs)
+        self.atomic_formula.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
         return GoalSimple(self.atomic_formula.bind_parameters(parameters))
@@ -90,11 +90,11 @@ class GoalConjunction(GoalDescriptor):
     def copy(self) -> 'GoalDescriptor':
         return GoalConjunction([g.copy() for g in self.goals])
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
+            visit_function(self, *args, **kwargs)
         for g in self.goals:
-            g.visit(visit_function, valid_types)
+            g.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
         return GoalConjunction([g.bind_parameters(parameters) for g in self.goals])
@@ -115,11 +115,11 @@ class GoalDisjunction(GoalDescriptor):
     def copy(self) -> 'GoalDescriptor':
         return GoalDisjunction([g.copy() for g in self.goals])
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
+            visit_function(self, *args, **kwargs)
         for g in self.goals:
-            g.visit(visit_function, valid_types)
+            g.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
         return GoalDisjunction([g.bind_parameters(parameters) for g in self.goals])
@@ -136,10 +136,10 @@ class GoalNegative(GoalDescriptor):
     def copy(self) -> 'GoalDescriptor':
         return GoalNegative(self.goal.copy())
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
-        self.goal.visit(visit_function, valid_types)
+            visit_function(self, *args, **kwargs)
+        self.goal.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
         return GoalNegative(self.goal.bind_parameters(parameters))
@@ -157,11 +157,11 @@ class GoalImplication(GoalDescriptor):
     def copy(self) -> 'GoalDescriptor':
         return GoalImplication(self.antecedent.copy(), self.consequent.copy())
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
-        self.antecedent.visit(visit_function, valid_types)
-        self.consequent.visit(visit_function, valid_types)
+            visit_function(self, *args, **kwargs)
+        self.antecedent.visit(visit_function, valid_types, args, kwargs)
+        self.consequent.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
         return GoalImplication(self.antecedent.bind_parameters(parameters), self.consequent.bind_parameters(parameters))
@@ -187,12 +187,12 @@ class GoalQuantified(GoalDescriptor):
         params = [ TypedParameter(p.type, p.label, p.value) for p in self.typed_parameters ]
         return GoalQuantified(params, self.goal.copy(), self.goal_type)
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
+            visit_function(self, *args, **kwargs)
         for p in self.typed_parameters:
-            p.visit(visit_function, valid_types)
-        self.goal.visit(visit_function, valid_types)
+            p.visit(visit_function, valid_types, args, kwargs)
+        self.goal.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
         """
@@ -216,10 +216,10 @@ class TimedGoal(GoalDescriptor):
     def copy(self) -> 'GoalDescriptor':
         return TimedGoal(self.time_spec, self.goal.copy())
         
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
-        self.goal.visit(visit_function, valid_types)
+            visit_function(self, *args, **kwargs)
+        self.goal.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
         return TimedGoal(self.time_spec, self.goal.bind_parameters(parameters))
