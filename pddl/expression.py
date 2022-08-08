@@ -63,11 +63,11 @@ class ExprBase:
         elif self.expr_type == ExprBase.ExprType.SPECIAL:
             return ExprBase(ExprBase.ExprType.SPECIAL, special_type=self.special_type)
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
+            visit_function(self, *args, **kwargs)
         if self.expr_type == ExprBase.ExprType.FUNCTION:
-            self.function.visit(visit_function, valid_types)
+            self.function.visit(visit_function, valid_types, args, kwargs)
         
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'ExprBase':
         """
@@ -116,11 +116,11 @@ class ExprComposite:
         """
         return ExprComposite([token.copy() for token in self.tokens])
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
+            visit_function(self, *args, **kwargs)
         for token in self.tokens:
-            token.visit(visit_function, valid_types)
+            token.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'ExprComposite':
         """

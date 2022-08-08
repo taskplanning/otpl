@@ -21,15 +21,15 @@ class Metric:
         """
         return Metric(self.metric_spec, self.expression.copy())
 
-    def visit(self, visit_function: callable, valid_types: tuple[type] = None) -> None:
+    def visit(self, visit_function: callable, valid_types: tuple[type] = None, args=(), kwargs={}) -> None:
         """
         Calls the given visit function on the metric expression.
         param visit_function: The function to call.
         param valid_types: A set of types to visit. If None, all types are visited.
         """
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
-        self.expression.visit(visit_function, valid_types)
+            visit_function(self, *args, **kwargs)
+        self.expression.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters: list[TypedParameter]) -> 'Metric':
         """

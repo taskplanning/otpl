@@ -61,7 +61,7 @@ class Domain:
     # visiting #
     # ======== #
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None):
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}):
         """
         Calls the visit function on self and recurses through the
         visit methods of members.
@@ -69,22 +69,22 @@ class Domain:
         param valid_types: a set of types to visit. If None, all types are visited.
         """
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
+            visit_function(self, *args, **kwargs)
 
         for type in self.type_tree.values():
-            type.visit(visit_function, valid_types)
+            type.visit(visit_function, valid_types, args, kwargs)
         
         for predicate in self.predicates.values():
-            predicate.visit(visit_function, valid_types)
+            predicate.visit(visit_function, valid_types, args, kwargs)
 
         for function in self.functions.values():
-            function.visit(visit_function, valid_types)
+            function.visit(visit_function, valid_types, args, kwargs)
 
         for operator in self.operators.values():
-            operator.visit(visit_function, valid_types)
+            operator.visit(visit_function, valid_types, args, kwargs)
 
         for derived_predicate in self.derived_predicates:
-            derived_predicate.visit(visit_function, valid_types)        
+            derived_predicate.visit(visit_function, valid_types, args, kwargs)        
 
     # ======= #
     # setters #

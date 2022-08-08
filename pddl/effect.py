@@ -34,14 +34,14 @@ class Effect:
         """
         return Effect()
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         """
         Calls the visit function on self and recurses through the visit methods of members.
         param visit_function: the function to call on self.
         param valid_types: a set of types to visit. If None, all types are visited.
         """
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
+            visit_function(self, *args, **kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
         """
@@ -70,11 +70,11 @@ class EffectConjunction(Effect):
         """
         return EffectConjunction([e.copy() for e in self.effects])
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
+            visit_function(self, *args, **kwargs)
         for e in self.effects:
-            e.visit(visit_function, valid_types)
+            e.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
         return EffectConjunction([e.bind_parameters(parameters) for e in self.effects])
@@ -105,12 +105,12 @@ class EffectForall(Effect):
         params = [ TypedParameter(p.type, p.label, p.value) for p in self.typed_parameters ]
         return EffectForall(params, self.effect.copy())
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
+            visit_function(self, *args, **kwargs)
         for p in self.typed_parameters:
-            p.visit(visit_function, valid_types)
-        self.effect.visit(visit_function, valid_types)
+            p.visit(visit_function, valid_types, args, kwargs)
+        self.effect.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
         """
@@ -138,11 +138,11 @@ class EffectConditional(Effect):
         """
         return EffectConditional(self.condition.copy(), self.effect.copy())
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
-        self.condition.visit(visit_function, valid_types)
-        self.effect.visit(visit_function, valid_types)
+            visit_function(self, *args, **kwargs)
+        self.condition.visit(visit_function, valid_types, args, kwargs)
+        self.effect.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
         return EffectConditional(self.condition.bind_parameters(parameters), self.effect.bind_parameters(parameters))
@@ -162,10 +162,10 @@ class EffectSimple(Effect):
         """
         return EffectSimple(self.formula.copy())
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
-        self.formula.visit(visit_function, valid_types)
+            visit_function(self, *args, **kwargs)
+        self.formula.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
         return EffectSimple(self.formula.bind_parameters(parameters))
@@ -204,10 +204,10 @@ class TimedEffect(Effect):
         """
         return TimedEffect(self.time_spec, self.effect.copy())
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
-        self.effect.visit(visit_function, valid_types)
+            visit_function(self, *args, **kwargs)
+        self.effect.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'Effect':
         return TimedEffect(self.time_spec, self.effect.bind_parameters(parameters))
