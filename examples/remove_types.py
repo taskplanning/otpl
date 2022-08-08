@@ -1,8 +1,8 @@
 from examples.create_temporal_problem import create_temporal_problem
-from pddl.atomic_formula import TypedParameter
+from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.domain import Domain
 from pddl.domain_type import DomainType
-from pddl.effect import EffectForall
+from pddl.effect import EffectConditional, EffectConjunction, EffectForall, EffectType
 from pddl.goal_descriptor import GoalConjunction, GoalQuantified, GoalSimple, GoalType
 from pddl.operator import Operator
 from pddl.problem import Problem
@@ -36,15 +36,21 @@ def remove_types_from_element(element) -> None:
     elif isinstance(element, Operator):
         for parameter in element.formula.typed_parameters:
             if parameter.type != "object":
-                element.add_simple_condition_from_str(parameter.type, { "?o": parameter.label } ) 
+                element.add_simple_condition_from_str(parameter.type, { parameter.label : "object" } ) 
     elif isinstance(element, GoalQuantified):
         if element.goal.goal_type != GoalType.CONJUNCTION:
             element.goal = GoalConjunction([element.goal])
         for parameter in element.typed_parameters:
             if parameter.type != "object":
-                element.goal.goals.append(GoalSimple(parameter.type, { "?o": parameter.label } ))
+                element.goal.goals.append(GoalSimple(AtomicFormula.from_string(parameter.type, { parameter.label : "object" } )))
     elif isinstance(element, EffectForall):
-        raise NotImplementedError("Normalising Forall effects is not yet implemented.")
+        if element.effect.effect_type != EffectType.CONDITIONAL:
+            element.effect = EffectConditional(GoalConjunction([]),element.effect)
+        if element.effect.condition.goal_type != GoalType.CONJUNCTION:
+            element.effect.condition = GoalConjunction([element.effect.condition])
+        for parameter in element.typed_parameters:
+            if parameter.type != "object":
+                element.effect.condition.goals.append(GoalSimple(AtomicFormula.from_string(parameter.type, { parameter.label : "object" } )))
 
 # ======= #
 # problem #
@@ -72,7 +78,7 @@ def remove_types_from_problem(problem : Problem) -> None:
     problem.domain.type_constants_map = { "object" : [ constant for constant in problem.domain.constants_type_map.keys() ] }
 
     # remove types from operators
-    problem.domain.visit(remove_types_from_element, (TypedParameter,Operator))
+    problem.domain.visit(remove_types_from_element, (TypedParameter,Operator,GoalQuantified,EffectForall))
     
 
 def make_unary_type_proposition(problem : Problem, sub_type : DomainType, parent_type : DomainType) -> None:
