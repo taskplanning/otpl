@@ -250,9 +250,9 @@ class Parser(pddl22Visitor):
 
     def visitFunction_comparison(self, ctx:pddl22Parser.Function_comparisonContext):
         ineq = Inequality(
-            Inequality.ComparisonType(ctx.binary_comparison.getText()),
-            self.visit(ctx.expression[0]),
-            self.visit(ctx.expression[1])
+            Inequality.ComparisonType(ctx.binary_comparison().getText()),
+            self.visit(ctx.expression()[0]),
+            self.visit(ctx.expression()[1])
         )
         return ineq
 
@@ -331,7 +331,7 @@ class Parser(pddl22Visitor):
         return goal
 
     def visitGoal_descriptor_comparison(self, ctx: pddl22Parser.Goal_descriptor_comparisonContext):
-        return self.visit(ctx.function_comparison)
+        return self.visit(ctx.function_comparison())
 
     #=====================#
     # parsing timed goals #
@@ -347,14 +347,11 @@ class Parser(pddl22Visitor):
         return GoalConjunction(goals)
 
     def visitTimed_goal_descriptor(self, ctx: pddl22Parser.Timed_goal_descriptorContext):
-        if ctx.time_specifier().getText() == "start":
-            assert(ctx.time_specifier_prefix().getText() == "(at")
+        if "start" in ctx.time_specifier().getText():
             time_spec = TimeSpec.AT_START
-        elif ctx.time_specifier().getText() == "end":
-            assert(ctx.time_specifier_prefix().getText() == "(at")
+        elif "end" in ctx.time_specifier().getText():
             time_spec = TimeSpec.AT_END
-        elif ctx.time_specifier().getText() == "all":
-            assert(ctx.time_specifier_prefix().getText() == "(over")
+        elif "over" in ctx.time_specifier().getText():
             time_spec = TimeSpec.OVER_ALL
         return TimedGoal(time_spec=time_spec, goal=self.visit(ctx.goal_descriptor()))
         
@@ -433,18 +430,18 @@ class Parser(pddl22Visitor):
             self.visit(ctx.timed_effect()))
 
     def visitTimed_effect_timed(self, ctx: pddl22Parser.Timed_effect_timedContext):
-        if ctx.time_specifier().getText() == "start":
+        if ctx.TIME_SPECIFIER_SUFFIX().getText() == "start":
             time_spec = TimeSpec.AT_START
-        elif ctx.time_specifier().getText() == "end":
+        elif ctx.TIME_SPECIFIER_SUFFIX().getText() == "end":
             time_spec = TimeSpec.AT_END
         return TimedEffect(time_spec, self.visit(ctx.c_effect()))
 
     def visitTimed_effect_assign(self, ctx: pddl22Parser.Timed_effect_assignContext):
-        if ctx.time_specifier().getText() == "start":
+        if ctx.TIME_SPECIFIER_SUFFIX().getText() == "start":
             time_spec = TimeSpec.AT_START
-        elif ctx.time_specifier().getText() == "end":
+        elif ctx.TIME_SPECIFIER_SUFFIX().getText() == "end":
             time_spec = TimeSpec.AT_END
-        return TimedEffect(time_spec, self.visit(ctx.c_effect()))
+        return TimedEffect(time_spec, self.visit(ctx.function_assign_durative()))
 
     def visitFunction_assign_durative(self, ctx: pddl22Parser.Function_assign_durativeContext):
         assign_op = AssignmentType(ctx.assign_operator().getText())        
