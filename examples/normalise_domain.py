@@ -1,8 +1,11 @@
+import itertools
 from examples.remove_types import remove_types_from_domain
 from pddl.atomic_formula import AtomicFormula, TypedParameter
+from pddl.derived_predicate import DerivedPredicate
 from pddl.domain import Domain
 from pddl.effect import Effect, EffectConditional, EffectConjunction, EffectForall, EffectNegative, EffectSimple
-from pddl.goal_descriptor import GoalConjunction, GoalDescriptor, GoalDisjunction, GoalImplication, GoalNegative, GoalQuantified, GoalSimple
+from pddl.goal_descriptor import GoalConjunction, GoalDescriptor, GoalDisjunction, GoalImplication, GoalNegative, GoalQuantified, GoalSimple, GoalType
+from pddl.operator import Operator
 
 def normalise_domain(domain : Domain):
     """
@@ -32,16 +35,43 @@ def _simplify_conditions(domain : Domain):
     4. Disjunctions are moved to the outside.
     5. Structures are split to eliminate disjunctions.
     """
+    new_operators : list[Operator] = []
+    remove_operators = set()
     for op in domain.operators.values():
 
-        # remove implications
+        # 1. remove implications
         if not isinstance(op.condition, GoalConjunction):
             op.condition = GoalConjunction([op.condition])
         _remove_all_implications(op.condition)
 
-        # transform into negation normal form
-        for sub_condition in op.condition.goals:
-            _transform_into_negation_normal_form(sub_condition, [op.condition], False)
+        # 2. transform into negation normal form
+        op.condition = _transform_into_negation_normal_form(op.condition, False)
+
+        # 3. remove universal quantifiers
+        op.condition = _remove_universal_conditions(op.condition, domain)
+
+        # 4. move disjunctions to the outside
+        op.condition = _move_disjunctive_condition(op.condition)
+
+        # 5. split structures to eliminate disjunctions
+        op.condition = _flatten_disjunctive_conditions(op.condition)
+        if isinstance(op.condition, GoalDisjunction):
+            count = 0
+            for disj in op.condition.goals:
+                # create new operator
+                new_formula = op.formula.copy()
+                new_formula.name = op.formula.name + "_" + str(count)
+                new_op = Operator(new_formula, durative=False)
+                new_op.condition = disj
+                new_op.effect = op.effect.copy()
+                new_operators.append(new_op)
+                count += 1
+            remove_operators.add(op.formula.name)
+
+    # add all new split operators to the domain
+    for op in new_operators: domain.operators[op.formula.name] = op
+    # remove all old operators
+    for name in remove_operators: domain.operators.pop(name)
 
 # ============ #
 # implications #
@@ -89,67 +119,164 @@ def _remove_all_implications(parent_condition : GoalDescriptor):
 # NNF #
 # === #
 
-def _transform_into_negation_normal_form(condition : GoalDescriptor, path : list[GoalDescriptor], negate : bool):
+def _transform_into_negation_normal_form(condition : GoalDescriptor, negate : bool) -> GoalDescriptor:
     """
     Uses DeMorgan's laws to transform the condition into negation normal form.
     Assumes that implications have already been removed and the path contains a single conjunction.
     param condition: Condition to transform.
-    param path: Path through condition tree to this condition.
     param negate: True if the condition should be negated.
+    returns: The transformed condition.
     """
-    new_condition = None
-    if negate and (isinstance(condition, GoalConjunction) or isinstance(condition, GoalDisjunction)):
-
-        # negate each sub-condition
-        sub_conditions = []
-        for sub_condition in condition.goals:
-            if isinstance(sub_condition, GoalNegative):
-                sub_conditions.append(sub_condition.goal)
-            else: sub_conditions.append(GoalNegative(sub_condition))
-
-        # create the alternate condition
-        if isinstance(condition, GoalConjunction):
-            new_condition = GoalDisjunction(sub_conditions)
-        elif isinstance(condition, GoalDisjunction):
-            new_condition = GoalConjunction(sub_conditions)
-
-        # toggle negation
-        negate = False
-
-    elif negate and isinstance(condition, GoalNegative):
-
-        # negate the sub-condition
-        new_condition = condition.goal
-        negate = False
-
-    # set parent's condition to the new condition
-    if new_condition is not None:
-        if isinstance(path[-1], GoalConjunction) or isinstance(path[-1], GoalDisjunction):
-            path[-1].goals.remove(condition)
-            path[-1].goals.append(new_condition)
-        elif isinstance(path[-1], GoalQuantified):
-            path[-1].goal = new_condition
-        elif isinstance(path[-1], GoalNegative):
-            # eliminate the negative parent
-            if isinstance(path[-2], GoalConjunction) or isinstance(path[-2], GoalDisjunction):
-                path[-2].goals.remove(path[-1])
-                path[-2].goals.append(new_condition)
-            elif isinstance(path[-2], GoalQuantified) or isinstance(path[-2], GoalNegative):
-                path[-2].goal = new_condition
-        condition = new_condition
-
-    # recurse on the sub-conditions
     if isinstance(condition, GoalConjunction) or isinstance(condition, GoalDisjunction):
+
+        # possibly negate the condition
+        if negate: new_condition = GoalDisjunction([]) if isinstance(condition, GoalConjunction) else GoalConjunction([])
+        else: new_condition = GoalConjunction([]) if isinstance(condition, GoalConjunction) else GoalDisjunction([])
+
+        # recurse on the sub-conditions
         for sub_condition in condition.goals:
-            new_path = path.copy()
-            new_path.append(condition)
-            _transform_into_negation_normal_form(sub_condition, new_path, negate)
+            new_condition.goals.append(_transform_into_negation_normal_form(sub_condition, negate))
+        return new_condition
+
     elif isinstance(condition, GoalQuantified):
-        path.append(condition)
-        _transform_into_negation_normal_form(condition.goal, path, negate)
+
+        # possibly negate the quantifier and recurse
+        if negate: condition.goal_type = GoalType.EXISTENTIAL if condition.goal_type == GoalType.UNIVERSAL else GoalType.UNIVERSAL
+        condition.goal = _transform_into_negation_normal_form(condition.goal, negate)
+        return condition
+
     elif isinstance(condition, GoalNegative):
-        path.append(condition)
-        _transform_into_negation_normal_form(condition.goal, path, True)
+
+        # eliminate the negative goal and recurse
+        if negate: return _transform_into_negation_normal_form(condition.goal, False)
+        else: return _transform_into_negation_normal_form(condition.goal, True)
+
+    else:
+
+        # possibly negate the condition
+        if negate: return GoalNegative(condition)
+        else: return condition
+
+# =========================== #
+# remove universal conditions #
+# =========================== #
+
+def _collect_typed_parameters(condition : GoalSimple, params : list[TypedParameter]):
+    """
+    Collects all typed parameters in the condition.
+    """
+    for param in condition.atomic_formula.typed_parameters:
+        match = False
+        for other in params:
+            if other.type == param.type and other.label == param.label:
+                match = True
+                break
+        if not match: params.append(param)
+
+def _remove_universal_conditions(condition : GoalDescriptor, domain : Domain) -> GoalDescriptor:
+    """
+    Eliminates universal conditions. If a universal is found during traversal
+    through the condition tree, then it is replaced using the following rule:
+        forall x: phi -> not exists x not phi -> not new_pred
+    where new_pred is a new derived predicate: exists x not phi.
+    """
+    if isinstance(condition, GoalQuantified) and condition.goal_type == GoalType.UNIVERSAL:
+
+        # create new derived predicate
+        pred_name = "derived_predicate_" + str(len(domain.derived_predicates))
+        typed_parameters = []
+        condition.visit(_collect_typed_parameters, valid_types=(GoalSimple,), kwargs={"params" : typed_parameters})
+        derived_predicate = AtomicFormula(pred_name, typed_parameters)
+        derived_condition = GoalQuantified(
+            typed_parameters=condition.typed_parameters,
+            quantification=GoalType.EXISTENTIAL,
+            goal=_transform_into_negation_normal_form(condition.goal, True))
+        domain.derived_predicates.append(DerivedPredicate(derived_condition, derived_predicate))
+
+        # create new condition
+        return GoalNegative(GoalSimple(derived_predicate))
+
+    elif isinstance(condition, GoalConjunction) or isinstance(condition, GoalDisjunction):
+
+        # recurse on the sub-conditions
+        new_subconditions = []
+        for sub_condition in condition.goals:
+            new_subconditions.append(_remove_universal_conditions(sub_condition, domain))
+        condition.goals = new_subconditions
+
+    elif isinstance(condition, GoalNegative):
+        condition.goal = _remove_universal_conditions(condition.goal, domain)
+    
+    return condition
+
+# ================= #
+# move disjunctions #
+# ================= #
+
+def _move_disjunctive_condition(condition : GoalDescriptor) -> GoalDescriptor:
+    """
+    Moves disjunctions to the root of the condition tree using the following rules:
+        exists x (phi or psi) -> exists x phi or exists x psi
+        xi and (phi or psi) -> (xi and phi) or (xi and psi)
+    Assumes that universals and implications have already been removed.
+    """
+    if isinstance(condition, GoalConjunction):
+
+        # recurse on the sub-conditions
+        subgoals = []
+        disjunctions = []
+        for subgoal in condition.goals:
+            subgoal = _move_disjunctions(subgoal)
+            if isinstance(subgoal, GoalDisjunction):
+                disjunctions.append(subgoal)
+            else: subgoals.append(subgoal)
+
+        if len(disjunctions) > 0:
+            # create root disjunction
+            new_condition = GoalDisjunction([])
+            # prepare conjunctive part (xi)
+            conjunction = GoalConjunction(subgoals)
+            # loop through permutations of disjunctive parts
+            perms = list(itertools.product(*[d.goals for d in disjunctions]))
+            for perm in perms:
+                # cop the conjunctive part (xi)
+                new_subgoal = conjunction.copy()
+                # add the disjunctive parts (phi) or (psi)
+                for goal in perm: new_subgoal.goals.append(goal)
+                # add the new subgoal to the root disjunction
+                new_condition.goals.append(new_subgoal)
+            return new_condition
+        else:
+            # no disjunctions to move
+            return GoalConjunction(subgoals)
+
+    elif isinstance(condition, GoalQuantified):
+
+        # recurse on the sub-condition
+        condition.goal = _move_disjunctions(condition.goal)
+        
+        # move disjunctions to the root
+        if isinstance(condition.goal, GoalDisjunction):
+            new_condition = GoalDisjunction([])
+            for subgoal in condition.goal.goals:
+                new_condition.goals.append(GoalQuantified(
+                    typed_parameters=condition.typed_parameters,
+                    quantification=condition.goal_type,
+                    goal=subgoal))
+            return new_condition
+        else: 
+            # no disjunction to move
+            return condition
+    
+    return condition
+
+def _flatten_disjunctive_conditions(condition : GoalDescriptor) -> GoalDescriptor:
+    if not isinstance(condition, GoalDisjunction): return condition
+    new_goals = []
+    for goal in condition.goals:
+        if not isinstance(goal, GoalDisjunction): new_goals.append(goal)
+        else: new_goals.extend(goal.goals)
+    return GoalDisjunction(new_goals)
 
 # ======= #
 # effects #
@@ -171,7 +298,7 @@ def _simplify_effects(domain : Domain):
         _expand_all_effects(op.effect)
 
         # Move conditional effects into universal effects
-        op.effect = _nest_conditional(op.effect)
+        op.effect = _move_disjunctions(op.effect)
         _nest_all_conditionals(op.effect)
 
         # Flatten nested effects of the same type
@@ -245,7 +372,7 @@ def _expand_all_effects(parent_effect : Effect):
 # nest effects #
 # ============ #
 
-def _nest_conditional(effect : Effect) -> Effect:
+def _move_disjunctions(effect : Effect) -> Effect:
     """
     Checks if the effect is a conditional over a universal and if so, nests it.
     """
@@ -271,7 +398,7 @@ def _nest_all_conditionals(parent_effect : Effect):
         # check and possibly nest each sub-effect
         new_effects = []
         for sub_effect in parent_effect.effects:
-            new_effects.append(_nest_conditional(sub_effect))
+            new_effects.append(_move_disjunctions(sub_effect))
         parent_effect.effects = new_effects
 
 # =============== #
@@ -378,11 +505,15 @@ def _create_nonsimple_domain():
     op = domain.operators['clear_one_block']
 
     op.condition = GoalImplication(
-        antecedent=GoalConjunction([
-            GoalSimple(AtomicFormula.from_string("on_table", {"?b" : "block", "?t" : "table"})),
-            GoalSimple(AtomicFormula.from_string("on_table", {"?b" : "block", "?t" : "table"})),
-            GoalSimple(AtomicFormula.from_string("on_table", {"?b" : "block", "?t" : "table"}))
-            ]),
+        antecedent=GoalQuantified(
+            typed_parameters=[TypedParameter("table", "?t2")],
+            quantification=GoalType.EXISTENTIAL,
+            goal=GoalConjunction([
+                GoalSimple(AtomicFormula.from_string("on_table", {"?b" : "block", "?t" : "table"})),
+                GoalSimple(AtomicFormula.from_string("on_table", {"?b" : "block", "?t" : "table"})),
+                GoalSimple(AtomicFormula.from_string("on_table", {"?b" : "block", "?t" : "table"}))
+            ])
+        ),
         consequent=GoalSimple(AtomicFormula.from_string("handempty"))
         )
 
@@ -410,3 +541,4 @@ if __name__ == "__main__":
     domain = _create_nonsimple_domain()
     normalise_domain(domain)
     print(domain)
+    
