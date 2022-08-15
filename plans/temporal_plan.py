@@ -132,7 +132,9 @@ class PlanTemporalNetwork:
                 elif new_plan == True and not match:
                     new_plan = False
                     plans.append(plan)
-
+        # If the new plan finishes on the last line, add the plan
+        if new_plan == True:
+            plans.append(plan)
         # Sets the plan to the best plan i.e. the last plan in the planner output
         plan = plans[-1]
         for line in plan:
@@ -174,6 +176,7 @@ class PlanTemporalNetwork:
             # create edge for action duration
             action_edge = Constraint(formula.print_pddl(), start_tp, end_tp, "stc", {"lb": duration, "ub": duration})
             self.temporal_network.add_constraint(action_edge)
+
 
     def construct_ordering_constraints(self):
         """

@@ -1,8 +1,12 @@
+#from msilib.schema import Error
 from queue import PriorityQueue
 import json
+from statistics import correlation
 from xmlrpc.client import Boolean
 import copy
 from math import inf
+import numpy as np
+from scipy import stats
 
 class TimePoint:
     """
@@ -43,7 +47,7 @@ class Constraint:
         self.label = label
         self.source = source
         self.sink = sink
-        assert type in ("stc, pstc"), "Invalid Constraint type, type must be 'stc' for simple temporal constraint, 'stcu' for simple temporal constraint with uncertainty or 'pstc' for probabilistic simple temporal constraint"
+        assert type in ("stc, pstc"), "Invalid Constraint type, type must be 'stc' for simple temporal constraint, or 'pstc' for probabilistic simple temporal constraint"
         self.type = type
         assert list(duration_bound.keys()) == ["lb", "ub"],  "Duration_bound should be in the form {'lb: float, 'ub': float}"
         self.duration_bound = duration_bound
@@ -120,6 +124,70 @@ class Constraint:
     def ub(self):
         return self.duration_bound["ub"]
 
+class Correlation:
+    """
+    Represents a correlation across a number of probabilistic "pstc" type constraints. Given n probabilistic constraints, such that for i = 1,2,...,n,
+    constraint i has mean = mu_i and standard deviation = sigma_i we have mean vector mu = (mu_1, mu_2,...,mu_n) and auxiliary matrix = [[sigma_1, 0, 0], [0, sigma_2, 0],.., [0, 0, sigma_n]]
+    We add a positive definite correlation matrix R, such that the covariance matrix is Sigma = auxiliary R auxiliary^T
+    """
+    def __init__(self, constraints: list[Constraint]):
+        self.contraints = constraints
+        for c in self.constraints:
+            if c.type != "pstc":
+                raise AttributeError("Correlated constraints must be of type pstc (probabilistic simple temporal constraint)")
+        # Initialises the correlation matrix to be an identity matrix of size n
+        self.correlation = np.identity(len(self.constraints))
+        self.mean = np.array([c.mean for c in self.constraints])
+        # Initialises covariance matrix
+        self.auxiliary = np.zeros((len(constraints), len(constraints)))
+        for i in range(len(constraints)):
+            for j in range(len(constraints)):
+                if i == j:
+                    self.auxiliary[i, j] = constraints[i].sd
+        self.covariance = self.auxiliary @ self.correlation @ self.auxiliary.transpose()
+
+    def add_correlation(self, correlation: np.ndarray) -> None:
+        """
+        Updates correlation matrix and covariance matrix
+        """
+        # Checks dimensions of correlation matrix are correct
+        assert np.shape(correlation)[0] == len(self.constraints) and np.shape(correlation)[1] == len(self.constraints), "Dimensions of correlation matrix are inconsistent with number of constraints. If n is number of constraints, correlation should be n x n array."
+        # Tries to make a multivariate normal distribution. This should raise a ValueError if correlation matrix is not positive-semidefinite
+        stats.multivariate_normal(self.mean, correlation)
+        # If no errors, updates
+        self.correlation = correlation
+        self.covariance = self.auxiliary @ self.correlation @ self.auxiliary.transpose()
+    
+    def add_random_correlation(self, eta):
+        """
+        Description:    Code for generating random positive semidefinite correlation matrices. Taken from https://gist.github.com/junpenglao/b2467bb3ad08ea9936ddd58079412c1a
+                        based on code from "Generating random correlation matrices based on vines and extended onion method", Daniel Lewandowski, Dorots Kurowicka and Harry Joe, 2009.
+        Input:          eta:    Parameter - the larger eta is, the closer to the identity matrix will be the correlation matrix (more details see https://stats.stackexchange.com/questions/2746/how-to-efficiently-generate-random-positive-semidefinite-correlation-matrices)
+        Output:         Correlation matrix
+        """
+        size = 1
+        n = len(self.constraints)
+        beta0 = eta - 1 + n/2
+        shape = n * (n-1) // 2
+        triu_ind = np.triu_indices(n, 1)
+        beta_ = np.array([beta0 - k/2 for k in triu_ind[0]])
+        # partial correlations sampled from beta dist.
+        P = np.ones((n, n) + (size,))
+        P[triu_ind] = stats.beta.rvs(a=beta_, b=beta_, size=(size,) + (shape,)).T
+        # scale partial correlation matrix to [-1, 1]
+        P = (P-.5)*2
+    
+        for k, i in zip(triu_ind[0], triu_ind[1]):
+            p = P[k, i]
+            for l in range(k-1, -1, -1):  # convert partial correlation to raw correlation
+                p = p * np.sqrt((1 - P[l, i]**2) *
+                                (1 - P[l, k]**2)) + P[l, i] * P[l, k]
+            P[k, i] = p
+            P[i, k] = p
+        self.correlation = np.transpose(P, (2, 0 ,1))[0]
+        self.covariance = self.auxiliary @ self.correlation @ self.auxiliary.transpose()
+
+
 class TemporalNetwork:
     """
     represents a simple temporal network as a graph.
@@ -130,7 +198,24 @@ class TemporalNetwork:
         self.constraints: list[Constraint] = []
     
     def copy(self):
-        return TemporalNetwork(self.name, copy.deepcopy(self.time_points), copy.deepcopy(self.constraints))
+        """
+        returns a copy of the temporal network.
+        """
+        tn = TemporalNetwork()
+        tn.name = self.name
+        tn.time_points = copy.deepcopy(self.time_points)
+        tn.constraints = copy.deepcopy(self.constraints)
+        return tn
+    
+    def make_pstn(self):
+        """
+        returns a copy of the network as a probabilistic temporal network.
+        """
+        pstn = ProbabilisticTemporalNetwork()
+        pstn.name = self.name
+        pstn.time_points = copy.deepcopy(self.time_points)
+        pstn.constraints = copy.deepcopy(self.constraints)
+        return pstn
 
     def add_time_point(self, time_point: TimePoint) -> None:
         """
@@ -357,7 +442,10 @@ class TemporalNetwork:
         print("\t],")
         print("\t\"constraints\": [")
         for constraint in self.constraints:
-            print("\t\t{\"source\": " + str(constraint.source.id) + ", \"target\": " + str(constraint.sink.id) + ", \"label\": \"" + "({}, {})".format(constraint.lb, constraint.ub) + "\"},")
+            if constraint.type == "stc":
+                print("\t\t{\"source\": " + str(constraint.source.id) + ", \"target\": " + str(constraint.sink.id) + ", \"label\": \"" + constraint.label + "\", \"bounds\": " + "({}, {})".format(constraint.lb, constraint.ub) + "},")
+            elif constraint.type == "pstc":
+                print("\t\t{\"source\": " + str(constraint.source.id) + ", \"target\": " + str(constraint.sink.id) + ", \"label\": \"" + constraint.label + "\", \"distribution\": " + "N({}, {})".format(constraint.mean, constraint.sd) + "},")
         print("\t]")
         print("}")
     
@@ -370,14 +458,41 @@ class TemporalNetwork:
         toDump["constraints"] = [c.to_json() for c in self.constraints]
         with open("{}.json".format(filename), 'w') as fp:
             json.dump(toDump, fp)
+    
+    def read_uncertainties_from_json(self, file: json):
+        """
+        Reads in a json of action and til uncertainties, such that the uncertainty x = sd/mean. Updates edges with
+        distributions and makes edges probabilistic. Returns a PSTN.
+        """
+        with open(file) as f:
+            uncertainties = json.load(f)
+        actions, tils = uncertainties["actions"], uncertainties["tils"]
+        for action in actions:
+            for constraint in self.constraints:
+                if action["description"] in constraint.label:
+                    if constraint.type == "stc":
+                        assert constraint.ub == constraint.lb
+                        constraint.distribution = {"mean": constraint.ub, "sd": constraint.ub * action["uncertainty"]}
+                        constraint.type = "pstc"
+                    else:
+                        raise ValueError("Uncertainties already added to costraints.")
+        for til in tils:
+            for constraint in self.constraints:
+                if til["description"] in constraint.label:
+                    if constraint.type == "stc":
+                        assert constraint.ub == constraint.lb
+                        constraint.distribution = {"mean": constraint.ub, "sd": constraint.ub * til["uncertainty"]}
+                        constraint.type = "pstc"
+                    else:
+                        raise ValueError("Uncertainties already added to constraints.")
 
 
 class ProbabilisticTemporalNetwork(TemporalNetwork):
     """
     represents a probabilistic temporal network.
     """
-    def __init__(self, name: str) -> None:
-        super().__init__(name)
+    def __init__(self) -> None:
+        super().__init__()
 
     def adds_constraint(self, constraint: Constraint) -> None:
         """
@@ -426,23 +541,23 @@ class ProbabilisticTemporalNetwork(TemporalNetwork):
         uncontrollable_time_points = [i.sink for i in self.get_probabilistic_constraints()]
         for time_point in self.time_points:
             if time_point in uncontrollable_time_points:
-                time_point.set_controllable("False")
+                time_point.controllable = False
             else:
-                time_point.set_controllable("True")
+                time_point.controllable = True
     
     def get_controllable_time_points(self) -> list[TimePoint]:
         """
         returns a list of controllable time-points
         """
         self.set_controllability_of_time_points()
-        return [i for i in self.time_points if i.is_controllable == True]
+        return [i for i in self.time_points if i.controllable == True]
     
     def get_uncontrollable_time_points(self) -> list[TimePoint]:
         """
         returns a list of uncontrollable time-points
         """
         self.set_controllability_of_time_points()
-        return [i for i in self.time_points if i.is_controllable == False]
+        return [i for i in self.time_points if i.controllable == False]
     
     def get_uncontrollable_constraints(self) -> list[Constraint]:
         """
@@ -451,10 +566,15 @@ class ProbabilisticTemporalNetwork(TemporalNetwork):
         self.set_controllability_of_time_points()
         uncontrollable_constraints = []
         for constraint in self.constraints:
-            if constraint.source.is_controllable() == False or constraint.sink.is_controllable() == False:
+            if constraint.source.controllable == False or constraint.sink.controllable == False:
                 uncontrollable_constraints.append(constraint)
+        return uncontrollable_constraints
     
-    def incoming_probabilistic(self, constraint) -> dict[str, Constraint]:
+    def get_controllable_constraints(self) -> list[Constraint]:
+        self.set_controllability_of_time_points()
+        return [i for i in self.get_requirement_constraints() if i.source.controllable == True and i.sink.controllable == True]
+    
+    def incoming_probabilistic(self, constraint: Constraint) -> dict[str, Constraint]:
         """
         returns a dictionary of the incoming probabilistic constraint in the form {"start": Constraint, "end": Constraint}
         raises an exception if the number of incoming probabilistic constraints is greater than one
@@ -475,5 +595,51 @@ class ProbabilisticTemporalNetwork(TemporalNetwork):
                     except IndexError:
                         return {"start": None, "end": incoming_sink[0]}
 
+    def read_uncertainties_from_json(self, file: json):
+        """
+        Reads in a json of action and til uncertainties, such that the uncertainty x = sd/mean. Updates edges with
+        distributions and makes edges probabilistic. Returns a PSTN.
+        """
+        with open(file) as f:
+            uncertainties = json.load(f)
+        actions, tils = uncertainties["actions"], uncertainties["tils"]
 
+        for action in actions:
+            for constraint in self.constraints:
+                if action["name"] in constraint.label:
+                    if constraint.type == "stc":
+                        assert constraint.ub == constraint.lb
+                        constraint.distribution = {"mean": constraint.ub, "sd": constraint.ub * action["uncertainty"]}
+                        constraint.type = "pstc"
+                    else:
+                        raise ValueError("Uncertainties already added to costraints.")
+        for til in tils:
+            for constraint in self.constraints:
+                if til["name"] in constraint.label:
+                    if constraint.type == "stc":
+                        assert constraint.ub == constraint.lb
+                        constraint.distribution = {"mean": constraint.ub, "sd": constraint.ub * til["uncertainty"]}
+                        constraint.type = "pstc"
+                    else:
+                        raise ValueError("Uncertainties already added to constraints.")
+
+    def make_correlated_pstn(self):
+        """
+        returns a copy of the network as a correlated probabilistic temporal network.
+        """
+        corr_pstn = CorrelatedProbabilisticTemporalNetwork()
+        corr_pstn.name = self.name
+        corr_pstn.time_points = copy.deepcopy(self.time_points)
+        corr_pstn.constraints = copy.deepcopy(self.constraints)
+        return corr_pstn
     
+class CorrelatedProbabilisticTemporalNetwork(ProbabilisticTemporalNetwork):
+    """
+    represents a correlated probabilistic temporal network.
+    """
+    def __init__(self) -> None:
+        super().__init__()
+        self.correlations = []
+    
+    def add_correlation(self, constraints: list[Constraint]) -> None:
+        self.correlations.append(Correlation(constraints))
