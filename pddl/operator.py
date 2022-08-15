@@ -188,7 +188,7 @@ class Operator:
 
     def __str__(self) -> str:
         # TODO checking for empty parameters and conditions
-        return ("(durative-action " if self.durative else "(action ") \
+        return ("(:durative-action " if self.durative else "(action ") \
                 + self.formula.name + "\n" \
                 + "  :parameters (" + self.formula.print_pddl(include_types=True).partition(' ')[2][:-1] + ")\n" \
                 + ("  :duration " + str(self.duration) + "\n" if self.durative else "") \
