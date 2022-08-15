@@ -80,7 +80,7 @@ class Grounding:
         self.prepare_symbol_tables(domain, problem)
 
         # map labels to ids
-        self.ground_object_list(domain, problem)
+        self.ground_object_list(problem)
 
         # map labels to ids for predicates and functions
         self.ground_symbol_list(self.predicate_table, self.domain.predicates, self.predicate_heads)

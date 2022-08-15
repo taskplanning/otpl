@@ -33,11 +33,11 @@ class Inequality(GoalDescriptor):
     def copy(self) -> 'GoalDescriptor':
         return Inequality(self.comparison_type, self.lhs.copy(), self.rhs.copy())
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
-        self.lhs.visit(visit_function, valid_types)
-        self.rhs.visit(visit_function, valid_types)
+            visit_function(self, *args, **kwargs)
+        self.lhs.visit(visit_function, valid_types, args, kwargs)
+        self.rhs.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'GoalDescriptor':
         return Inequality(self.comparison_type, self.lhs.bind_parameters(parameters), self.rhs.bind_parameters(parameters))

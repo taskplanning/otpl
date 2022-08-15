@@ -23,7 +23,7 @@ def remove_types_from_domain(dom : Domain) -> None:
     dom.type_constants_map = { "object" : [ constant for constant in dom.constants_type_map.keys() ] }
 
     # remove types from operators
-    dom.visit(remove_types_from_element, (TypedParameter,Operator,GoalQuantified,EffectForall))
+    dom.visit(remove_types_from_element, valid_types=(TypedParameter,Operator,GoalQuantified,EffectForall))
 
 def remove_types_from_element(element) -> None:
     """
@@ -70,7 +70,7 @@ def remove_types_from_problem(problem : Problem) -> None:
         make_unary_type_proposition(problem, problem.domain.type_tree[type_name], problem.domain.type_tree[type_name])
 
     # remove types from initial state, goal, and metric
-    problem.visit(remove_types_from_element, (TypedParameter))
+    problem.visit(remove_types_from_element, valid_types=(TypedParameter))
 
     # remove types from domain
     problem.domain.type_tree.clear()
@@ -78,7 +78,7 @@ def remove_types_from_problem(problem : Problem) -> None:
     problem.domain.type_constants_map = { "object" : [ constant for constant in problem.domain.constants_type_map.keys() ] }
 
     # remove types from operators
-    problem.domain.visit(remove_types_from_element, (TypedParameter,Operator,GoalQuantified,EffectForall))
+    problem.domain.visit(remove_types_from_element, valid_types=(TypedParameter,Operator,GoalQuantified,EffectForall))
     
 
 def make_unary_type_proposition(problem : Problem, sub_type : DomainType, parent_type : DomainType) -> None:

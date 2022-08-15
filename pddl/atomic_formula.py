@@ -11,9 +11,9 @@ class TypedParameter:
             + "," + (self.value if self.value else "") \
             + ")"
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None) -> None:
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
+            visit_function(self, *args, **kwargs)
 
 class AtomicFormula:
     """
@@ -54,16 +54,16 @@ class AtomicFormula:
     # visiting #
     # ======== #
 
-    def visit(self, visit_function : callable, valid_types : tuple[type] = None):
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}):
         """
         Calls the given function with this atomic formula, if in valid_types.
         param visit_function: The function to call.
         param valid_types: A set of types to call the function on. If None, all types are accepted.
         """
         if valid_types is None or isinstance(self, valid_types):
-            visit_function(self)
+            visit_function(self, *args, **kwargs)
         for p in self.typed_parameters:
-            p.visit(visit_function, valid_types)
+            p.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'AtomicFormula':
         """
