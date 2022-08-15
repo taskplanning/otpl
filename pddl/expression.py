@@ -21,7 +21,7 @@ class ExprBase:
 
     class SpecialType(Enum):
         HASHT      = "#t"
-        TOTAL_TIME = "?total-time"
+        TOTAL_TIME = "total-time"
         DURATION   = "?duration"
 
     def __init__(self,
