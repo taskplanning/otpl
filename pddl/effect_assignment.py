@@ -24,9 +24,6 @@ class Assignment(Effect):
         self.assign_type = assign_type
         self.lhs = lhs
         self.rhs = rhs
-        # catch possible mismatch between LHS/RHS groundedness
-        # TODO switch to method that can be handled by ExprComposite
-        # assert(lhs.grounded == rhs.grounded)
 
     def __repr__(self) -> str:
         if self.assign_type == AssignmentType.INCREASE_CTS:
@@ -34,6 +31,17 @@ class Assignment(Effect):
         elif self.assign_type == AssignmentType.DECREASE_CTS:
             return "(decrease " + self.lhs.print_pddl() + ' ' + repr(self.rhs) + ')' 
         return "(" + self.assign_type.value + " " + self.lhs.print_pddl() + ' ' + repr(self.rhs) + ')' 
+
+    def copy(self) -> 'Effect':
+        """
+        Returns a deep copy of the effect.
+        """
+        return Assignment(self.assign_type, self.lhs.copy(), self.rhs.copy())
+
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
+        if valid_types is None or isinstance(self, valid_types):
+            visit_function(self, *args, **kwargs)
+        
 
     def bind_parameters(self, parameters: list[TypedParameter]) -> 'Effect':
         """

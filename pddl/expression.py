@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import List
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 
 class ExprBase:
@@ -22,7 +21,7 @@ class ExprBase:
 
     class SpecialType(Enum):
         HASHT      = "#t"
-        TOTAL_TIME = "?total-time"
+        TOTAL_TIME = "total-time"
         DURATION   = "?duration"
 
     def __init__(self,
@@ -49,6 +48,27 @@ class ExprBase:
         elif self.expr_type == ExprBase.ExprType.SPECIAL:
             return self.special_type.value
 
+    def copy(self) -> 'ExprBase':
+        """
+        Returns a deep copy of the expression.
+        """
+        if self.expr_type == ExprBase.ExprType.CONSTANT:
+            return ExprBase(ExprBase.ExprType.CONSTANT, constant=self.constant)
+        elif self.expr_type == ExprBase.ExprType.FUNCTION:
+            return ExprBase(ExprBase.ExprType.FUNCTION, function=self.function.copy())
+        elif self.expr_type == ExprBase.ExprType.BINARY_OPERATOR:
+            return ExprBase(ExprBase.ExprType.BINARY_OPERATOR, op=self.op)
+        elif self.expr_type == ExprBase.ExprType.UMINUS:
+            return ExprBase(ExprBase.ExprType.UMINUS)
+        elif self.expr_type == ExprBase.ExprType.SPECIAL:
+            return ExprBase(ExprBase.ExprType.SPECIAL, special_type=self.special_type)
+
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
+        if valid_types is None or isinstance(self, valid_types):
+            visit_function(self, *args, **kwargs)
+        if self.expr_type == ExprBase.ExprType.FUNCTION:
+            self.function.visit(visit_function, valid_types, args, kwargs)
+        
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'ExprBase':
         """
         Binds the parameters of a copy of the expression to the given list of parameters.
@@ -70,7 +90,7 @@ class ExprComposite:
     Stores a list of ExprBase in prefix notation.
     """
 
-    def __init__(self, tokens : List[ExprBase]) -> None:
+    def __init__(self, tokens : list[ExprBase]) -> None:
         self.tokens = tokens
 
     def __repr__(self) -> str:
@@ -89,6 +109,18 @@ class ExprComposite:
                     return_string += ")"
                     op_stack = 0
         return return_string
+
+    def copy(self) -> 'ExprComposite':
+        """
+        Returns a copy of the expression.
+        """
+        return ExprComposite([token.copy() for token in self.tokens])
+
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}) -> None:
+        if valid_types is None or isinstance(self, valid_types):
+            visit_function(self, *args, **kwargs)
+        for token in self.tokens:
+            token.visit(visit_function, valid_types, args, kwargs)
 
     def bind_parameters(self, parameters : list[TypedParameter]) -> 'ExprComposite':
         """

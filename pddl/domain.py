@@ -1,4 +1,3 @@
-from typing import Dict, List
 from pddl.derived_predicate import DerivedPredicate
 from pddl.domain_type import DomainType
 from pddl.operator import Operator
@@ -10,24 +9,85 @@ class Domain:
     A class that describes a PDDL domain model, including:
     - *requirements* as a list of strings.
     - *type heirarchy* as a list of pddl.domain_type.DomainType.
-    - *constants* as two dicts mapping: (a) object name to type (str->str) (b) type to object names (str->List[str]).
+    - *constants* as two dicts mapping: (a) object name to type (str->str) (b) type to object names (str->list[str]).
     - *predicates* & *functions* both as a list of pddl.domain_formula.DomainFormula.
     - *operators* as a list of pddl.domain_operator.DomainOperator.
     """
 
     def __init__(self, domain_name : str) -> None:
         self.domain_name = domain_name    
-        self.requirements : List[str] = []
-        self.type_tree : Dict[str, DomainType] = {}
-        self.constants_type_map : Dict[str,str] = {}
-        self.type_constants_map : Dict[str,List[str]] = {}
-        self.predicates : Dict[str, AtomicFormula] = {}
-        self.functions : Dict[str, AtomicFormula] = {}
-        self.operators : Dict[str,Operator] = {}
-        self.derived_predicates : List[DerivedPredicate] = []
+        self.requirements : list[str] = []
+        self.type_tree : dict[str, DomainType] = {}
+        self.constants_type_map : dict[str,str] = {}
+        self.type_constants_map : dict[str,list[str]] = {}
+        self.predicates : dict[str, AtomicFormula] = {}
+        self.functions : dict[str, AtomicFormula] = {}
+        self.operators : dict[str,Operator] = {}
+        self.derived_predicates : list[DerivedPredicate] = []
 
     # ======= #
-    # Setters #
+    # cloning #
+    # ======= #
+
+    def copy(self) -> 'Domain':
+        """
+        Returns a deep copy of the problem.
+        """
+        clone = Domain(self.domain_name)
+        clone.requirements = self.requirements.copy()
+        
+        # types
+        for name, type in self.type_tree.items():
+            clone.add_type(name, type.parent)
+        clone.constants_type_map = self.constants_type_map.copy()
+        for type in self.type_constants_map:
+            clone.type_constants_map[type] = self.type_constants_map[type].copy()
+        
+        # predicates, functions, operators
+        for formula in self.predicates.values():
+            clone.predicates[formula.name] = formula.copy()
+        for formula in self.functions.values():
+            clone.functions[formula.name] = formula.copy()
+        for operator in self.operators.values():
+            clone.operators[operator.formula.name] = operator.copy()
+
+        # derived predicates
+        for derived_predicate in self.derived_predicates:
+            clone.derived_predicates.append(derived_predicate.copy())
+
+        return clone
+
+    # ======== #
+    # visiting #
+    # ======== #
+
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}):
+        """
+        Calls the visit function on self and recurses through the
+        visit methods of members.
+        param visit_function: the function to call on self.
+        param valid_types: a set of types to visit. If None, all types are visited.
+        """
+        if valid_types is None or isinstance(self, valid_types):
+            visit_function(self, *args, **kwargs)
+
+        for type in self.type_tree.values():
+            type.visit(visit_function, valid_types, args, kwargs)
+        
+        for predicate in self.predicates.values():
+            predicate.visit(visit_function, valid_types, args, kwargs)
+
+        for function in self.functions.values():
+            function.visit(visit_function, valid_types, args, kwargs)
+
+        for operator in self.operators.values():
+            operator.visit(visit_function, valid_types, args, kwargs)
+
+        for derived_predicate in self.derived_predicates:
+            derived_predicate.visit(visit_function, valid_types, args, kwargs)        
+
+    # ======= #
+    # setters #
     # ======= #
 
     def add_type(self, type_name : str, parent_type : str = "object"):
@@ -111,7 +171,7 @@ class Domain:
 
 
     # =================== #
-    # Queries and utility #
+    # queries and utility #
     # =================== #
 
 
@@ -126,7 +186,7 @@ class Domain:
         return self.is_sub_type(self.type_tree[type].parent, parent)
         
     # ======== #
-    # Printing #
+    # printing #
     # ======== #
 
     def __str__(self) -> str:

@@ -1,10 +1,13 @@
+import numpy as np
+
 from pddl.domain import Domain
-from pddl.effect import EffectNegative, EffectSimple
+from pddl.effect import EffectNegative, EffectSimple, EffectType
 from pddl.goal_descriptor import GoalConjunction, GoalDescriptor, GoalSimple, GoalType
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.metric import Metric
+from pddl.state import State
 from pddl.timed_initial_literal import TimedInitialLiteral
-
+from pddl.grounding import Grounding
 
 class Problem:
     """
@@ -15,21 +18,140 @@ class Problem:
     """
 
     def __init__(self, problem_name : str, domain : Domain) -> None:
-        self.problem_name = problem_name
-        self.domain_name = domain.domain_name
+
+        # problem header
+        self.problem_name : str = problem_name
+        self.domain_name : str = domain.domain_name
         self.domain = domain
         self.requirements : list[str] = []
+
+        # current time (subtracted from TILs on printing)        
+        self.current_time = 0.0
+
+        # objects
         self.objects_type_map : dict[str,str] = {}
         self.type_objects_map : dict[str,list[str]] = {}
+
+        # initial state (ungrounded form)
         self.propositions : list[AtomicFormula] = []
         self.functions : list[tuple[float,AtomicFormula]] = []
         self.timed_initial_literals : list[TimedInitialLiteral] = []
+
+        # grounding
+        self.grounding = Grounding()
+
+        # goal and metric
         self.goal : GoalDescriptor = None
         self.metric : Metric = None
-        self.current_time = 0.0
+
+    # ========= #
+    # grounding #
+    # ========= #
+
+    def ground(self):
+        self.grounding.ground_problem(self.domain, self)
+
+    # ====== #
+    # states #
+    # ====== #
+
+    def get_initial_state(self) -> State:
+        """
+        return numpy array of propositional initial state.
+        """
+        if not self.grounding.grounded:
+            self.grounding.ground_problem(self.domain, self)
+
+        state = State()
+        state.time = self.current_time
+        state.logical = np.zeros(self.grounding.proposition_count, dtype=bool)
+        state.numeric = np.array([np.nan] * self.grounding.function_count, dtype=float)
+        state.logical[[ self.grounding.get_id_from_proposition(p) for p in self.propositions ]] = True
+        for value, pne in self.functions:
+            state.numeric[self.grounding.get_id_from_pne(pne)] = value
+        return state
+
+
+    def update_with_state(self, state : State) -> None:
+        """
+        Update the problem object to the given state.
+        """
+        self.current_time = state.time
+
+        # propositions
+        self.propositions.clear()
+        for id in np.nonzero(state.logical)[0]:
+            self.propositions.append(self.grounding.get_proposition_from_id(id))
+
+        # functions
+        self.functions.clear()
+        for id in np.nonzero(np.logical_not(np.isnan(state.numeric)))[0]:
+            self.functions.append((state.numeric[id], self.grounding.get_pne_from_id(id)))
 
     # ======= #
-    # Setters #
+    # cloning #
+    # ======= #
+
+    def copy(self) -> 'Problem':
+        """
+        Returns a deep copy of the problem.
+        """
+        clone = Problem(self.problem_name, self.domain)
+        clone.requirements = self.requirements.copy()
+
+        clone.objects_type_map = self.objects_type_map.copy()
+        for type in self.type_objects_map:
+            clone.type_objects_map[type] = self.type_objects_map[type].copy()
+        
+        for prop in self.propositions: clone.propositions.append(prop.copy())
+        for val,func in self.functions: clone.functions.append((val,func.copy()))
+        for til in self.timed_initial_literals: clone.timed_initial_literals.append(til.copy())
+
+        clone.goal = self.goal.copy() if self.goal else None
+        clone.metric = self.metric.copy() if self.metric else None
+        
+        clone.current_time = self.current_time
+
+        return clone
+
+    def copy_with_state(self, state : State) -> 'Problem':
+        """
+        Returns a copy of the problem with the given state.
+        """
+        clone = self.copy()
+        clone.update_with_state(state)
+        return clone
+
+    # ======== #
+    # visiting #
+    # ======== #
+
+    def visit(self, visit_function : callable, valid_types : tuple[type] = None, args=(), kwargs={}):
+        """
+        Calls the visit function on self and recurses through the visit methods of members.
+        param visit_function: the function to call on self.
+        param valid_types: a set of types to visit. If None, all types are visited.
+        """
+        if valid_types is None or isinstance(self, valid_types):
+            visit_function(self, *args, **kwargs)
+        
+        for prop in self.propositions:
+            prop.visit(visit_function, valid_types, args, kwargs)
+        
+        for val,func in self.functions:
+            func.visit(visit_function, valid_types, args, kwargs)
+        
+        for til in self.timed_initial_literals:
+            til.visit(visit_function, valid_types, args, kwargs)
+        
+        if self.goal:
+            self.goal.visit(visit_function, valid_types, args, kwargs)
+
+        if self.metric:
+            self.metric.visit(visit_function, valid_types, args, kwargs)
+
+    # ======= #
+    # setters #
     # ======= #
 
     def add_object(self, name : str, type : str = "object"):
@@ -52,9 +174,9 @@ class Problem:
         param params: list of parameter values.
         """
         if predicate_name not in self.domain.predicates:
-            raise Exception("Predicate {.s} does not exist.".format(predicate_name))
+            raise Exception("Predicate {} does not exist.".format(predicate_name))
         if len(self.domain.predicates[predicate_name].typed_parameters) != len(params):
-            raise Exception("Proposition {.s} has wrong number of parameters.".format(predicate_name))
+            raise Exception("Proposition {} has wrong number of parameters.".format(predicate_name))
         typed_params = []
         for param, value in zip(self.domain.predicates[predicate_name].typed_parameters, params):
             typed_params.append(TypedParameter(param.type, param.label,value))
@@ -85,9 +207,9 @@ class Problem:
         param negative: True if the TIL is negative.
         """
         if predicate_name not in self.domain.predicates:
-            raise Exception("Predicate {.s} does not exist.".format(predicate_name))
+            raise Exception("Predicate {} does not exist.".format(predicate_name))
         if len(self.domain.predicates[predicate_name].typed_parameters) != len(params):
-            raise Exception("Proposition {.s} has wrong number of parameters.".format(predicate_name))
+            raise Exception("Proposition {} has wrong number of parameters.".format(predicate_name))
         typed_params = []
         for param, value in zip(self.domain.predicates[predicate_name].typed_parameters, params):
             typed_params.append(TypedParameter(param.type, param.label,value))
@@ -99,6 +221,7 @@ class Problem:
         """
         Adds a timed initial literal to the initial state.
         """
+        # TODO add effect matching here to avoid duplicates
         self.timed_initial_literals.append(timed_initial_literal)
 
     def add_assignment_from_str(self, value : float, function_name : str, params : list[str] = []):
@@ -109,9 +232,9 @@ class Problem:
         param params: list of parameter values.
         """
         if function_name not in self.domain.functions:
-            raise Exception("Function {.s} does not exist.".format(function_name))
+            raise Exception("Function {} does not exist.".format(function_name))
         if len(self.domain.functions[function_name].typed_parameters) != len(params):
-            raise Exception("Function {.s} has wrong number of parameters.".format(function_name))
+            raise Exception("Function {} has wrong number of parameters.".format(function_name))
         typed_params = []
         for param, value in zip(self.domain.functions[function_name].typed_parameters, params):
             typed_params.append(TypedParameter(param.type, param.label,value))
@@ -129,7 +252,12 @@ class Problem:
                 if param1.value != param2.value:
                     match = False
                     break
-            if match: return
+            if match and value == val: 
+                return
+            if match:
+                # new assignment overrides the previous
+                self.functions.remove((val,func))
+                break
         self.functions.append((value,function))
 
     def add_simple_goal_from_str(self, predicate_name : str, params : list[str] = []):
@@ -139,9 +267,9 @@ class Problem:
         param values: list of parameter values.
         """
         if predicate_name not in self.domain.predicates:
-            raise Exception("Predicate {.s} does not exist.".format(predicate_name))
+            raise Exception("Predicate {} does not exist.".format(predicate_name))
         if len(self.domain.predicates[predicate_name].typed_parameters) != len(params):
-            raise Exception("Proposition {.s} has wrong number of parameters.".format(predicate_name))
+            raise Exception("Proposition {} has wrong number of parameters.".format(predicate_name))
         typed_params = []
         for param, value in zip(self.domain.predicates[predicate_name].typed_parameters, params):
             typed_params.append(TypedParameter(param.type, param.label,value))
@@ -163,7 +291,7 @@ class Problem:
             self.goal = GoalConjunction(goals=[self.goal, condition])
 
     # ======== #
-    # Printing #
+    # printing #
     # ======== #
 
     def __str__(self) -> str:
@@ -190,7 +318,8 @@ class Problem:
         for func in self.functions:
             return_string += "  (= " + func[1].print_pddl() + " " + str(func[0]) + ")\n"
         for til in self.timed_initial_literals:
-            return_string += "  " + repr(til) + "\n"
+            if self.current_time <= til.time:
+                return_string += "  " + til.print_pddl(self.current_time) + "\n"
         return_string += ")\n"
 
         # goal & metric

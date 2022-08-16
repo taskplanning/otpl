@@ -55,15 +55,14 @@ class PlanSequential:
 
     def check_plan(self, print_results=False) -> bool:
 
-        grounding = Grounding()
-        grounding.ground_problem(self.domain, self.problem)
-        state = grounding.get_initial_state_spike()
+        state = self.problem.get_initial_state()
+        grounding = self.problem.grounding
 
         # check if the plan is executable
         for action in self.action_list:
 
-            pos, neg = grounding.get_action_condition_spike(action)
-            result = np.logical_xor(pos, np.logical_and(pos, state))
+            pos, neg = grounding.get_simple_action_condition(action)
+            result = np.logical_xor(pos, np.logical_and(pos, state.logical))
             if np.any(result):
                 if print_results:
                     print("Action " + str(action.formula) + " is not applicable.")
@@ -71,7 +70,7 @@ class PlanSequential:
                         print("Positive condition is not met: " + str(grounding.get_proposition_from_id(index)))
                 return False
 
-            result = np.logical_xor(neg, np.logical_and(neg, np.logical_not(state)))
+            result = np.logical_xor(neg, np.logical_and(neg, np.logical_not(state.logical)))
             if np.any(result):
                 if print_results:
                     print("Action " + str(action.formula) + " is not applicable.")        
@@ -80,9 +79,8 @@ class PlanSequential:
                 return False
 
             # apply action effects
-            adds, dels = grounding.get_action_effect_spike(action)
-            np.logical_xor(np.logical_and(state, dels), state, out=state)
-            np.logical_or(state, adds, out=state)
+            action_id = grounding.get_id_from_action(action)
+            grounding.apply_simple_action_effects(action_id, state)
 
         if print_results:
             print("Plan is executable.")
@@ -94,7 +92,7 @@ class PlanSequential:
         
         # positive goals
         goal_achieved = True
-        reuslt = np.logical_xor(positive_conditions, np.logical_and(positive_conditions, state))
+        result = np.logical_xor(positive_conditions, np.logical_and(positive_conditions, state.logical))
         if np.any(result):
             if print_results:
                 print("Goal is not satisfied.")
@@ -103,7 +101,7 @@ class PlanSequential:
             goal_achieved = False
 
         # negative goals
-        result = np.logical_xor(negative_conditions, np.logical_and(negative_conditions, np.logical_not(state)))
+        result = np.logical_xor(negative_conditions, np.logical_and(negative_conditions, np.logical_not(state.logical)))
         if np.any(result):
             if print_results:
                 print("Goal is not satisfied.")

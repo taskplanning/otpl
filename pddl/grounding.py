@@ -1,10 +1,11 @@
 import numpy as np
+
 from pddl.atomic_formula import AtomicFormula, TypedParameter
 from pddl.domain import Domain
 from pddl.effect import Effect, EffectType
 from pddl.goal_descriptor import GoalDescriptor, GoalType
 from pddl.operator import Operator
-from pddl.problem import Problem
+from pddl.state import State
 from pddl.symbol_table import SymbolTable
 from pddl.time_spec import TimeSpec
 from pddl.timed_initial_literal import TimedInitialLiteral
@@ -14,7 +15,6 @@ class Grounding:
     def __init__(self):
 
         self.domain  : Domain  = None
-        self.problem : Problem = None
 
         # symbol tables for domain and problem
         self.operator_table  : SymbolTable = SymbolTable()
@@ -57,18 +57,21 @@ class Grounding:
         self.statics = {}
         self.static_offset = 0
 
+        # mutexes
+        self.action_mutexes = None
+        self.proposition_mutexes = None
+
     #======================#
     # Setting heads values #
     #======================#
 
-    def ground_problem(self, domain : Domain, problem : Problem):
+    def ground_problem(self, domain : Domain, problem):
 
         if self.grounded:
             return
         self.grounded = True
 
         self.domain = domain
-        self.problem = problem
 
         # determine which predicates are static
         self.check_static_predicates()
@@ -77,7 +80,7 @@ class Grounding:
         self.prepare_symbol_tables(domain, problem)
 
         # map labels to ids
-        self.ground_object_list()
+        self.ground_object_list(problem)
 
         # map labels to ids for predicates and functions
         self.ground_symbol_list(self.predicate_table, self.domain.predicates, self.predicate_heads)
@@ -90,7 +93,7 @@ class Grounding:
         self.ground_symbol_list(self.operator_table, op_formulae, self.operator_heads)
         self.action_count = self.last_symbol_count
 
-    def prepare_symbol_tables(self, domain : Domain, problem : Problem):
+    def prepare_symbol_tables(self, domain : Domain, problem):
         # create symbol tables for predicates, ordering statics first
         for name, _ in domain.predicates.items():
             if self.statics[name]:
@@ -119,8 +122,8 @@ class Grounding:
         if obj_type in self.domain.type_tree:
             self.update_type_symbol_table(obj_name, self.domain.type_tree[obj_type].parent)
 
-    def ground_object_list(self):
-        self.type_counts["object"] = len(self.problem.objects_type_map) + len(self.domain.constants_type_map)
+    def ground_object_list(self, problem):
+        self.type_counts["object"] = len(problem.objects_type_map) + len(self.domain.constants_type_map)
         for type in self.domain.type_tree.keys():
             self.type_counts[type] = len(self.type_symbol_tables[type].symbol_list)
 
@@ -185,16 +188,16 @@ class Grounding:
             if self.predicate_heads[name][0] <= id and id < self.predicate_heads[name][1]:
                 id = id - self.predicate_heads[name][0]
                 params = self.domain.predicates[name].typed_parameters
-                return AtomicFormula(name, self.get_parameters_from_id(id, params), True)
+                return AtomicFormula(name, self.get_parameters_from_id(id, params))
 
     def get_pne_from_id(self, id : int) -> AtomicFormula:
         for name in self.function_heads:
             if self.function_heads[name][0] <= id and id < self.function_heads[name][1]:
                 id = id - self.function_heads[name][0]
                 params = self.domain.functions[name].typed_parameters
-                return AtomicFormula(name, self.get_parameters_from_id(id, params), True)
+                return AtomicFormula(name, self.get_parameters_from_id(id, params))
 
-    def get_action_from_id(self, id : int) -> AtomicFormula:
+    def get_action_from_id(self, id : int) -> Operator:
         for name in self.operator_heads:
             if self.operator_heads[name][0] <= id and id < self.operator_heads[name][1]:
                 id = id - self.operator_heads[name][0]
@@ -213,9 +216,9 @@ class Grounding:
             ground_parameters.append(TypedParameter(param.type, param.label, value))
         return ground_parameters
 
-    #==================#
-    # statics analysis #
-    #==================#
+    # ======== #
+    # analysis #
+    # ======== #
 
     def check_static_predicates(self):
         self.statics = {p : True for p in self.domain.predicates.keys()}
@@ -239,22 +242,51 @@ class Grounding:
             return predicate == effect.formula.name
         return False   
 
-    #===============#
-    # spike methods #
-    #===============#
-
-    def get_initial_state_spike(self):
+    def compute_action_mutexes(self, actions : np.ndarray):
         """
-        return numpy array of propositional initial state
+        Compute mutexes for selected actions through brute force.
+        TODO replace this with fast/graphplan implementation.
+        param actions: array of type bool indicating which action IDs to check, e.g. only reachable actions.
         """
-        if not self.grounded:
-            return None
+        self.action_mutexes = np.zeros((self.action_count,self.action_count), dtype=bool)
+        for action_id in np.nonzero(actions)[0]:
+            action = self.get_action_from_id(action_id)
+            for other_id in np.nonzero(actions)[0]:
+                if other_id <= action_id: continue
+                other = self.get_action_from_id(other_id)
+                if self.check_actions_mutex(action, other):
+                    self.action_mutexes[action_id, other_id] = True
+                    self.action_mutexes[other_id, action_id] = True
 
-        init_spike = np.zeros(self.proposition_count, dtype=bool)
-        init_spike[[ self.get_id_from_proposition(p) for p in self.problem.propositions ]] = True
-        return init_spike
+    def check_actions_mutex(self, action : Operator, other : Operator) -> bool:
+        """
+        Check interference between two actions. Actions interfere if they have conflicting effects, 
+        of one action affects the other's preconditions.
+        """
+        # interference between effects
+        oth_add_effect, oth_del_effect = self.get_simple_action_effect(other)
+        act_add_effect, act_del_effect = self.get_simple_action_effect(action)
+        if np.any(np.logical_and(act_add_effect, oth_del_effect)): return True
+        if np.any(np.logical_and(act_del_effect, oth_add_effect)): return True
 
-    def get_action_condition_spike_from_id(self, id : int, time_spec : TimeSpec = TimeSpec.AT_START) -> tuple[np.ndarray]:
+        # interference with action precondition
+        act_pos_condition, act_neg_condition = self.get_simple_action_condition(action)
+        if np.any(np.logical_and(act_pos_condition, oth_del_effect)): return True
+        if np.any(np.logical_and(act_neg_condition, oth_add_effect)): return True
+
+        # interference with other precondition
+        oth_pos_condition, oth_neg_condition = self.get_simple_action_condition(other)
+        if np.any(np.logical_and(oth_pos_condition, act_del_effect)): return True
+        if np.any(np.logical_and(oth_neg_condition, act_add_effect)): return True
+
+        return False
+
+
+    # ======================================== #
+    # get propositional conditions and effects #
+    # ======================================== #
+
+    def get_simple_action_condition_from_id(self, id : int, time_spec : TimeSpec = TimeSpec.AT_START) -> tuple[np.ndarray]:
         """
         Returns positive and negative spikes for the action condition, first returning the cached spike if it exists.
         If not, it will create a new spike and cache it.
@@ -264,12 +296,12 @@ class Grounding:
             return self.action_positive_condition_spikes[time_spec][id], self.action_negative_condition_spikes[time_spec][id]
         else:
             action = self.get_action_from_id(id)
-            pos, neg = self.get_action_condition_spike(action, time_spec)
+            pos, neg = self.get_simple_action_condition(action, time_spec)
             self.action_positive_condition_spikes[time_spec][id] = pos
             self.action_negative_condition_spikes[time_spec][id] = neg
             return pos, neg
 
-    def get_action_condition_spike(self, action : Operator, time_spec : TimeSpec = TimeSpec.AT_START) -> tuple[np.ndarray]:
+    def get_simple_action_condition(self, action : Operator, time_spec : TimeSpec = TimeSpec.AT_START) -> tuple[np.ndarray]:
         """
         return tuple of numpy arrays, one positive and one negative propositional precondition.
         Only looks at simple and negative conditions.
@@ -309,7 +341,7 @@ class Grounding:
             # comparison, disjunction, implication, universal, existential, and empty
             return
 
-    def get_action_effect_spike_from_id(self, id : int, time_spec : TimeSpec = TimeSpec.AT_START) -> tuple[np.ndarray]:
+    def get_simple_action_effect_from_id(self, id : int, time_spec : TimeSpec = TimeSpec.AT_START) -> tuple[np.ndarray]:
         """
         Returns positive and negative spikes for the action effect, first returning the cached spike if it exists.
         If not, it will create a new spike and cache it.
@@ -319,12 +351,12 @@ class Grounding:
             return self.action_add_effect_spikes[(id, time_spec)], self.action_del_effect_spikes[(id, time_spec)]
         else:
             action = self.get_action_from_id(id)
-            pos, neg = self.get_action_effect_spike(action, time_spec)
+            pos, neg = self.get_simple_action_effect(action, time_spec)
             self.action_add_effect_spikes[(id, time_spec)] = pos
             self.action_del_effect_spikes[(id, time_spec)] = neg
             return pos, neg
 
-    def get_action_effect_spike(self, action : Operator, time_spec : TimeSpec = TimeSpec.AT_START) -> tuple[np.ndarray]:      
+    def get_simple_action_effect(self, action : Operator, time_spec : TimeSpec = TimeSpec.AT_START) -> tuple[np.ndarray]:      
         """
         return tuple of numpy arrays, one adding and one deleting propositional effect.
         """
@@ -336,7 +368,7 @@ class Grounding:
         self.get_simple_effects(action.effect, positive_effects, negative_effects, time_spec)
         return positive_effects, negative_effects  
 
-    def get_til_effect_spike(self, til : TimedInitialLiteral) -> tuple[np.ndarray]:      
+    def get_simple_til_effect(self, til : TimedInitialLiteral) -> tuple[np.ndarray]:      
         """
         return tuple of numpy arrays, one adding and one deleting propositional effect.
         """
@@ -372,41 +404,51 @@ class Grounding:
             # forall, numeric, continuous, conditional, and empty
             return
     
-    #===============#
-    # spike helpers #
-    #===============#
+    #======================#
+    # state helper methods #
+    #======================#
 
-    def check_simple_conditions(self, action_id : int, state : np.ndarray) -> bool:
+    def check_simple_conditions(self, action_id : int, state : State, time_spec : TimeSpec = TimeSpec.AT_START) -> bool:
         """
         Checks if the action's simple conditions are satisfied in the given state.
+        param action_id: the id of the action to check.
+        param state: numpy array of boolean values representing the logical part of the state.
         """
-        pos, neg = self.get_action_condition_spike_from_id(action_id)
+        pos, neg = self.get_simple_action_condition_from_id(action_id, time_spec)
         # check positive preconditions
-        if np.any(np.logical_xor(pos, np.logical_and(state, pos))):
+        if np.any(np.logical_xor(pos, np.logical_and(state.logical, pos))):
             return False
         # check negative preconditions
-        if np.any(np.logical_and(state, neg)):
+        if np.any(np.logical_and(state.logical, neg)):
             return False
         return True
 
-    def apply_simple_effects(self, action_id : int, state : np.ndarray) -> np.ndarray:
+    def apply_simple_action_effects(self, action_id : int, state : State, time_spec : TimeSpec = TimeSpec.AT_START) -> None:
         """
-        Apply the propositional effects of the action to the state, returning the new state.
+        Apply the propositional effects of the action to the logical state.
         """
-        adds, dels = self.get_action_effect_spike_from_id(action_id)
-        new_state = np.logical_xor(state, np.logical_and(state, dels))
-        return np.logical_or(new_state, adds)
+        adds, dels = self.get_simple_action_effect_from_id(action_id, time_spec)
+        np.logical_xor(state.logical, np.logical_and(state.logical, dels), out=state.logical)
+        np.logical_or(state.logical, adds, out=state.logical)
+    
+    def apply_simple_til_effects(self, til : TimedInitialLiteral, state : State) -> None:
+        """
+        Apply the propositional effects of the action to the logical state.
+        """
+        adds, dels = self.get_simple_til_effect(til)
+        np.logical_xor(state.logical, np.logical_and(state.logical, dels), out=state.logical)
+        np.logical_or(state.logical, adds, out=state.logical)
 
-    def simple_goal_achieved(self, state : np.ndarray) -> bool:
+    def check_simple_goal(self, state : State, goal : GoalDescriptor) -> bool:
         """
         Checks if the simple goal true in the state.
+        param state: numpy array of boolean values representing the logical part of the state.
         """
         positive_conditions = np.zeros(self.proposition_count, dtype=bool)
         negative_conditions = np.zeros(self.proposition_count, dtype=bool)
-        self.get_simple_conditions(self.problem.goal, positive_conditions, negative_conditions)
+        self.get_simple_conditions(goal, positive_conditions, negative_conditions)
         for id in np.nonzero(positive_conditions)[0]:
-            if not state[id]: return False
+            if not state.logical[id]: return False
         for id in np.nonzero(negative_conditions)[0]:
-            if state[id]: return False
+            if state.logical[id]: return False
         return True
-        # return not np.any(np.logical_xor(positive_conditions, np.logical_and(positive_conditions, state)))

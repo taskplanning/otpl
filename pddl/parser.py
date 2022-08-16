@@ -1,6 +1,5 @@
 import argparse
 import sys
-from typing import Tuple
 from antlr4 import CommonTokenStream, FileStream
 from pddl.grammar.pddl22Lexer import pddl22Lexer
 from pddl.grammar.pddl22Parser import pddl22Parser
@@ -44,7 +43,7 @@ class Parser(pddl22Visitor):
     # parsing access functions #
     #==========================#
 
-    def parse_files(self, domain : str, problem : str) -> Tuple[Domain, Problem]:
+    def parse_files(self, domain : str, problem : str) -> tuple[Domain, Problem]:
         """Parse and return a PDDL domain and problem from file.
 
         Args:
@@ -52,7 +51,7 @@ class Parser(pddl22Visitor):
             problem (str):  Path to problem file.
 
         Returns:
-            Tuple[Domain, Problem]: Parsed result as python objects.
+            tuple[Domain, Problem]: Parsed result as python objects.
         """
         return self.parse_domain_file(domain), self.parse_problem_file(problem)
 
@@ -187,10 +186,13 @@ class Parser(pddl22Visitor):
     def visitAtomic_formula(self, ctx:pddl22Parser.Atomic_formulaContext):
         # TODO need a name and variable lookup table to get types
         name = ctx.name().getText()
-        typed_parameters=self.visit(ctx.term_list())
+        typed_parameters = self.visit(ctx.term_list())
         if name in self.domain.predicates:
             for domain_param, param in zip(self.domain.predicates[name].typed_parameters, typed_parameters):
-                param.type = domain_param.type            
+                param.type = domain_param.type
+        if name in self.domain.functions:
+            for domain_param, param in zip(self.domain.functions[name].typed_parameters, typed_parameters):
+                param.type = domain_param.type
         return AtomicFormula(name, typed_parameters)
 
     #=============#
@@ -248,9 +250,9 @@ class Parser(pddl22Visitor):
 
     def visitFunction_comparison(self, ctx:pddl22Parser.Function_comparisonContext):
         ineq = Inequality(
-            Inequality.ComparisonType(ctx.binary_comparison.getText()),
-            self.visit(ctx.expression[0]),
-            self.visit(ctx.expression[1])
+            Inequality.ComparisonType(ctx.binary_comparison().getText()),
+            self.visit(ctx.expression()[0]),
+            self.visit(ctx.expression()[1])
         )
         return ineq
 
@@ -329,7 +331,7 @@ class Parser(pddl22Visitor):
         return goal
 
     def visitGoal_descriptor_comparison(self, ctx: pddl22Parser.Goal_descriptor_comparisonContext):
-        return self.visit(ctx.function_comparison)
+        return self.visit(ctx.function_comparison())
 
     #=====================#
     # parsing timed goals #
@@ -345,14 +347,11 @@ class Parser(pddl22Visitor):
         return GoalConjunction(goals)
 
     def visitTimed_goal_descriptor(self, ctx: pddl22Parser.Timed_goal_descriptorContext):
-        if ctx.time_specifier().getText() == "start":
-            assert(ctx.time_specifier_prefix().getText() == "(at")
+        if "start" in ctx.time_specifier().getText():
             time_spec = TimeSpec.AT_START
-        elif ctx.time_specifier().getText() == "end":
-            assert(ctx.time_specifier_prefix().getText() == "(at")
+        elif "end" in ctx.time_specifier().getText():
             time_spec = TimeSpec.AT_END
-        elif ctx.time_specifier().getText() == "all":
-            assert(ctx.time_specifier_prefix().getText() == "(over")
+        elif "over" in ctx.time_specifier().getText():
             time_spec = TimeSpec.OVER_ALL
         return TimedGoal(time_spec=time_spec, goal=self.visit(ctx.goal_descriptor()))
         
@@ -431,18 +430,18 @@ class Parser(pddl22Visitor):
             self.visit(ctx.timed_effect()))
 
     def visitTimed_effect_timed(self, ctx: pddl22Parser.Timed_effect_timedContext):
-        if ctx.time_specifier().getText() == "start":
+        if ctx.TIME_SPECIFIER_SUFFIX().getText() == "start":
             time_spec = TimeSpec.AT_START
-        elif ctx.time_specifier().getText() == "end":
+        elif ctx.TIME_SPECIFIER_SUFFIX().getText() == "end":
             time_spec = TimeSpec.AT_END
         return TimedEffect(time_spec, self.visit(ctx.c_effect()))
 
     def visitTimed_effect_assign(self, ctx: pddl22Parser.Timed_effect_assignContext):
-        if ctx.time_specifier().getText() == "start":
+        if ctx.TIME_SPECIFIER_SUFFIX().getText() == "start":
             time_spec = TimeSpec.AT_START
-        elif ctx.time_specifier().getText() == "end":
+        elif ctx.TIME_SPECIFIER_SUFFIX().getText() == "end":
             time_spec = TimeSpec.AT_END
-        return TimedEffect(time_spec, self.visit(ctx.c_effect()))
+        return TimedEffect(time_spec, self.visit(ctx.function_assign_durative()))
 
     def visitFunction_assign_durative(self, ctx: pddl22Parser.Function_assign_durativeContext):
         assign_op = AssignmentType(ctx.assign_operator().getText())        
@@ -595,8 +594,8 @@ class Parser(pddl22Visitor):
 
     def visitInit_element_assign(self, ctx: pddl22Parser.Init_element_assignContext):
         function = self.visit(ctx.atomic_formula())
-        function.value = float(ctx.number().getText())
-        self.problem.functions.append(function)
+        value = float(ctx.number().getText())
+        self.problem.functions.append((value,function))
 
     def visitInit_element_til(self, ctx: pddl22Parser.Init_element_tilContext):
         til = TimedInitialLiteral(float(ctx.number().getText()),self.visit(ctx.p_effect()))
@@ -656,9 +655,8 @@ if __name__ == "__main__":
         arg_parser.print_help()
         sys.exit(0)
     
+    pddl_parser = Parser()
     for file in args.pddl_file:
-        
-        pddl_parser = Parser()
         pddl_parser.parse_file(file)
         
     if pddl_parser.domain and args.print: print(pddl_parser.domain)

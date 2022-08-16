@@ -29,7 +29,7 @@ def create_temporal_domain() -> Domain:
     op.add_simple_condition_from_str("unused", {"?m" : "match"})
     op.add_simple_effect_from_str("unused", {"?m" : "match"}, is_delete=True)
     op.add_simple_effect_from_str("light", {"?m" : "match"})
-    op.add_simple_effect_from_str("unused", {"?m" : "match"}, is_delete=True)
+    op.add_simple_effect_from_str("light", {"?m" : "match"}, time_spec=TimeSpec.AT_END, is_delete=True)
 
     # mend fuse
     domain.add_operator_from_str("mend_fuse", {"?f" : "fuse", "?m" : "match"}, durative=True)
