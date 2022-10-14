@@ -10,7 +10,7 @@ pddl_file
 /*--------*/
 
 domain
-  : '(define' '(' 'domain' name ')'
+  : '(' DEFINE '(' 'domain' name ')'
   require_def?
   types_def?
   (constants_def | predicates_def | functions_def)+?
@@ -65,7 +65,7 @@ typed_type_list
 
 pddl_type
   : name
-  | '(either' name+ ')'
+  | '(' EITHER name+ ')'
   ;
 
 /*-----------*/
@@ -131,12 +131,12 @@ action_def
 goal_descriptor
   : '()' #goal_descriptor_empty
   | atomic_formula #goal_descriptor_simple
-  | '(and' goal_descriptor* ')' #goal_descriptor_conjunction
-  | '(or' goal_descriptor* ')' #goal_descriptor_disjunction
-  | '(not' goal_descriptor ')' #goal_descriptor_negative
-  | '(imply' goal_descriptor goal_descriptor ')' #goal_descriptor_implication
-  | '(exists' '(' typed_var_list* untyped_var_list? ')' goal_descriptor ')' #goal_descriptor_existential
-  | '(forall' '(' typed_var_list* untyped_var_list? ')' goal_descriptor ')' #goal_descriptor_universal
+  | '(' AND goal_descriptor* ')' #goal_descriptor_conjunction
+  | '(' OR goal_descriptor* ')' #goal_descriptor_disjunction
+  | '(' NOT goal_descriptor ')' #goal_descriptor_negative
+  | '(' IMPLY goal_descriptor goal_descriptor ')' #goal_descriptor_implication
+  | '(' EXISTS '(' typed_var_list* untyped_var_list? ')' goal_descriptor ')' #goal_descriptor_existential
+  | '(' FORALL '(' typed_var_list* untyped_var_list? ')' goal_descriptor ')' #goal_descriptor_universal
   | function_comparison #goal_descriptor_comparison
   ;
 
@@ -184,24 +184,24 @@ binary_operator
 
 effect
   : '()' #effect_empty
-  | '(and' c_effect* ')' #effect_conjunction
+  | '(' AND c_effect* ')' #effect_conjunction
   | c_effect #effect_c_effect
   ;
 
 c_effect
-  : '(forall' '(' typed_var_list* untyped_var_list? ')' effect ')' #c_effect_forall
-  | '(when' goal_descriptor conditional_effect ')' #c_effect_conditional
+  : '(' FORALL '(' typed_var_list* untyped_var_list? ')' effect ')' #c_effect_forall
+  | '(' WHEN goal_descriptor conditional_effect ')' #c_effect_conditional
   | p_effect #c_effect_primitive
   ;
 
 conditional_effect
-  : '(and' p_effect* ')' #conditional_effect_conjunction
+  : '(' AND p_effect* ')' #conditional_effect_conjunction
   | p_effect #conditional_effect_primitive
   ;
 
 p_effect
   : '(' assign_operator atomic_formula expression ')' #p_effect_assign
-  | '(not' atomic_formula ')' #p_effect_negative
+  | '(' NOT atomic_formula ')' #p_effect_negative
   | atomic_formula #p_effect_simple
   ;
 
@@ -233,7 +233,7 @@ durative_action_def
 
 duration_constraint
   : '()' #duration_constraint_empty
-  | '(and' simple_duration_constraint* ')' #duration_constraint_conjunction
+  | '(' AND simple_duration_constraint* ')' #duration_constraint_conjunction
   | simple_duration_constraint #duration_constraint_simple
   ;
 
@@ -250,7 +250,7 @@ duration_op
 
 durative_action_goal_descriptor
   : '()' #durative_action_goal_descriptor_empty
-  | '(and' timed_goal_descriptor+ ')' #durative_action_goal_descriptor_conjunction
+  | '(' AND timed_goal_descriptor+ ')' #durative_action_goal_descriptor_conjunction
   | timed_goal_descriptor #durative_action_goal_descriptor_timed
   ;
 
@@ -260,10 +260,10 @@ timed_goal_descriptor
 
 durative_action_effect
   : '()' #durative_action_effect_empty
-  | '(and' durative_action_effect* ')' #durative_action_effect_conjunction
+  | '(' AND durative_action_effect* ')' #durative_action_effect_conjunction
   | timed_effect #durative_action_effect_timed
-  | '(forall' '(' typed_var_list* untyped_var_list? ')' durative_action_effect ')' #durative_action_effect_forall
-  | '(when' durative_action_goal_descriptor timed_effect ')' #durative_action_effect_conditional
+  | '(' FORALL '(' typed_var_list* untyped_var_list? ')' durative_action_effect ')' #durative_action_effect_forall
+  | '(' WHEN durative_action_goal_descriptor timed_effect ')' #durative_action_effect_conditional
   ;
 
 timed_effect
@@ -307,7 +307,7 @@ derived_predicate_def
 /*---------*/
 
 problem
-  : '(define' '(' 'problem' name ')'
+  : '(' DEFINE '(' 'problem' name ')'
   '(:domain' name ')'
   require_def?
   object_declaration?
@@ -365,6 +365,15 @@ name // allows 'at' as predicate name, etc.
   : NAME
   | AT 
   | OVER_ALL
+  | NOT
+  | OR
+  | AND
+  | IMPLY
+  | FORALL
+  | EXISTS
+  | EITHER
+  | WHEN
+  | DEFINE
   | TIME_SPECIFIER_SUFFIX
   ;
 
@@ -378,6 +387,42 @@ VARIABLE
 
 AT
   : ('at' | 'AT')
+  ;
+
+NOT
+  : ('not' | 'NOT')
+  ;
+
+OR 
+  : ('or' | 'OR')
+  ;
+
+AND 
+  : ('and' | 'AND')
+  ;
+
+IMPLY 
+  : ('imply' | 'IMPLY')
+  ;
+
+FORALL 
+  : ('forall' | 'FORALL')
+  ;
+
+EXISTS 
+  : ('exists' | 'EXISTS')
+  ;
+
+EITHER 
+  : ('either' | 'EITHER')
+  ;
+
+WHEN 
+  : ('when' | 'WHEN')
+  ;
+
+DEFINE 
+  : ('define' | 'DEFINE')
   ;
 
 TIME_SPECIFIER_SUFFIX
