@@ -101,7 +101,7 @@ class Grounding:
         for name, _ in domain.predicates.items():
             if not self.statics[name]:
                 self.predicate_table.add_symbol(name)
-        # prepare symbol tables for operatorsand functions
+        # prepare symbol tables for operators and functions
         for name, _ in domain.operators.items():
             self.operator_table.add_symbol(name)
         for name, _ in domain.functions.items():
