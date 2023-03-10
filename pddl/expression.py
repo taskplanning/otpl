@@ -94,21 +94,19 @@ class ExprComposite:
         self.tokens = tokens
 
     def __repr__(self) -> str:
-        op_stack = 0
-        return_string = ""
-        for token in self.tokens:
-            if token.expr_type == ExprBase.ExprType.BINARY_OPERATOR:
-                return_string += "(" + repr(token) + " "
-                op_stack = op_stack + 2
-            else:
-                return_string += repr(token)
-                if op_stack==2:
-                    return_string += " "
-                    op_stack = op_stack - 1
-                elif op_stack==1:
-                    return_string += ")"
-                    op_stack = 0
-        return return_string
+        token_ids = list(range(len(self.tokens)))
+        return self._rec_repr_(token_ids)
+
+    def _rec_repr_(self, token_ids) -> str:
+        token = self.tokens[token_ids.pop(0)]
+        if token.expr_type == ExprBase.ExprType.BINARY_OPERATOR:
+            ret = '(' + repr(token) + ' '
+            ret += self._rec_repr_(token_ids)
+            ret += ' '
+            ret += self._rec_repr_(token_ids)
+            ret += ')'
+            return ret
+        return repr(token)
 
     def copy(self) -> 'ExprComposite':
         """
