@@ -62,7 +62,8 @@ class EffectConjunction(Effect):
         self.effects = effects
 
     def __repr__(self) -> str:
-        return "(and " + " ".join([repr(e) for e in self.effects]) + ")"
+        sp = '\n' + ' '*15
+        return "(and " + sp.join([repr(e) for e in self.effects]) + ")"
 
     def copy(self) -> 'Effect':
         """
