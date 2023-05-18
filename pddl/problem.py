@@ -236,8 +236,8 @@ class Problem:
         if len(self.domain.functions[function_name].typed_parameters) != len(params):
             raise Exception("Function {} has wrong number of parameters.".format(function_name))
         typed_params = []
-        for param, value in zip(self.domain.functions[function_name].typed_parameters, params):
-            typed_params.append(TypedParameter(param.type, param.label,value))
+        for param, param_value in zip(self.domain.functions[function_name].typed_parameters, params):
+            typed_params.append(TypedParameter(param.type, param.label, param_value))
         self.add_assignment(value, AtomicFormula(function_name, typed_params))
 
     def add_assignment(self, value : float, function : AtomicFormula):
