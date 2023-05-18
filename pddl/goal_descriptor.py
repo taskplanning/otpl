@@ -85,7 +85,8 @@ class GoalConjunction(GoalDescriptor):
         self.goals = goals
 
     def __repr__(self) -> str:
-        return "(and " + " ".join([repr(g) for g in self.goals]) + ")"
+        sp = '\n' + ' '*21
+        return "(and " + sp.join([repr(g) for g in self.goals]) + ")"
 
     def copy(self) -> 'GoalDescriptor':
         return GoalConjunction([g.copy() for g in self.goals])
