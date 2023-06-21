@@ -109,6 +109,8 @@ class Grounding:
         self.type_symbol_tables["object"] = SymbolTable()
         for type in domain.type_tree.keys():
             self.type_symbol_tables[type] = SymbolTable()
+            if domain.type_tree[type].parent not in domain.type_tree:
+                self.type_symbol_tables[domain.type_tree[type].parent] = SymbolTable()
         for type in domain.type_tree.keys():
             if type in problem.type_objects_map:
                 for obj in problem.type_objects_map[type]:
@@ -119,13 +121,19 @@ class Grounding:
 
     def update_type_symbol_table(self, obj_name : str, obj_type : str):
         self.type_symbol_tables[obj_type].add_symbol(obj_name)
-        if obj_type in self.domain.type_tree:
+        if obj_type in self.domain.type_tree and self.domain.type_tree[obj_type].parent != obj_type:  
+            # The second part of the if prevents an infinite recursion, for instance when there's a type "object" in the PDDL
             self.update_type_symbol_table(obj_name, self.domain.type_tree[obj_type].parent)
 
     def ground_object_list(self, problem):
         self.type_counts["object"] = len(problem.objects_type_map) + len(self.domain.constants_type_map)
         for type in self.domain.type_tree.keys():
             self.type_counts[type] = len(self.type_symbol_tables[type].symbol_list)
+            if self.domain.type_tree[type].parent not in self.domain.type_tree:
+                if self.domain.type_tree[type].parent not in self.type_counts:
+                    self.type_counts[self.domain.type_tree[type].parent] = len(self.type_symbol_tables[type].symbol_list)  # Initialise
+                else:
+                    self.type_counts[self.domain.type_tree[type].parent] += len(self.type_symbol_tables[type].symbol_list)
 
     def ground_symbol_list(self, symbol_table : SymbolTable, formulae : dict[str, AtomicFormula], heads : dict[str, int]):
         head = 0
