@@ -3,6 +3,7 @@ from pddl.domain import Domain
 from pddl.grounding import Grounding
 from pddl.problem import Problem
 from pddl.state import State
+from pddl.time_spec import TimeSpec
 
 class RelaxedPlanGraph:
 
@@ -46,17 +47,18 @@ class RelaxedPlanGraph:
         """
         self.actions_cached = True
         for action_id in range(self.grounding.action_count):
-            pos, _ = self.grounding.get_simple_action_condition_from_id(action_id)
-            adds, _ = self.grounding.get_simple_action_effect_from_id(action_id)
-            self.action_add_effect_spikes[action_id] = adds
-            self.action_positive_condition_spikes[action_id] = pos
-            self.action_precondition_counts[action_id] = np.count_nonzero(pos)
+            for time_spec in [TimeSpec.AT_START, TimeSpec.OVER_ALL, TimeSpec.AT_END]:
+                pos, _ = self.grounding.get_simple_action_condition_from_id(action_id, time_spec)
+                adds, _ = self.grounding.get_simple_action_effect_from_id(action_id, time_spec)
+                self.action_add_effect_spikes[action_id] = adds
+                self.action_positive_condition_spikes[action_id] = pos
+                self.action_precondition_counts[action_id] = np.count_nonzero(pos)
 
-            # cache precondition mapping
-            for prop in np.nonzero(pos)[0]:
-                if prop not in self.proposition_condition_map:
-                    self.proposition_condition_map[prop] = []
-                self.proposition_condition_map[prop].append(action_id)
+                # cache precondition mapping
+                for prop in np.nonzero(pos)[0]:
+                    if prop not in self.proposition_condition_map:
+                        self.proposition_condition_map[prop] = []
+                    self.proposition_condition_map[prop].append(action_id)
 
     def build_graph(self, state : State = None, stop_at_goal = True) -> int:
         """
@@ -120,13 +122,14 @@ class RelaxedPlanGraph:
                     self.fix_point_reached = False
 
                     # increment counters on action conditions
-                    for a in self.proposition_condition_map[prop_id]:
-                        self.action_counters[a] += 1
-                        if self.action_counters[a] == self.action_precondition_counts[a] and self.action_membership[a] == 0:
-                            # new action achievable
-                            self.action_membership[a] = self.last_layer + 1
-                            self.action_layers[self.last_layer+1].add(a)
-                            next_actions.append(a)
+                    if prop_id in self.proposition_condition_map:
+                        for a in self.proposition_condition_map[prop_id]:
+                            self.action_counters[a] += 1
+                            if self.action_counters[a] == self.action_precondition_counts[a] and self.action_membership[a] == 0:
+                                # new action achievable
+                                self.action_membership[a] = self.last_layer + 1
+                                self.action_layers[self.last_layer+1].add(a)
+                                next_actions.append(a)
 
             current_actions = next_actions
 
