@@ -52,7 +52,10 @@ class RelaxedPlanGraph:
                 adds, _ = self.grounding.get_simple_action_effect_from_id(action_id, time_spec)
                 self.action_add_effect_spikes[action_id] = adds
                 self.action_positive_condition_spikes[action_id] = pos
-                self.action_precondition_counts[action_id] = np.count_nonzero(pos)
+                if action_id in self.action_precondition_counts:
+                    self.action_precondition_counts[action_id] += np.count_nonzero(pos)
+                else:
+                    self.action_precondition_counts[action_id] = np.count_nonzero(pos)
 
                 # cache precondition mapping
                 for prop in np.nonzero(pos)[0]:
