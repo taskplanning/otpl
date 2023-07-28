@@ -153,7 +153,7 @@ class GoalImplication(GoalDescriptor):
         self.consequent = consequent
 
     def __repr__(self) -> str:
-        return "(imples " + repr(self.antecedent) + " " + repr(self.consequent) + ")"
+        return "(imply " + repr(self.antecedent) + " " + repr(self.consequent) + ")"
 
     def copy(self) -> 'GoalDescriptor':
         return GoalImplication(self.antecedent.copy(), self.consequent.copy())
