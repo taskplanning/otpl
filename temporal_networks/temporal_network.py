@@ -119,9 +119,17 @@ class Constraint:
     def lb(self):
         return self.duration_bound["lb"]
 
+    @lb.setter
+    def lb(self, x):
+        self.duration_bound["lb"] = x
+
     @property
     def ub(self):
         return self.duration_bound["ub"]
+
+    @ub.setter
+    def ub(self, x):
+        self.duration_bound["ub"] = x
 
 class Correlation:
     """
